@@ -3,7 +3,8 @@ package nl.rutgerkok.blocklocker.impl.event;
 
 import java.util.Optional;
 
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Sign;
@@ -37,6 +38,17 @@ public class SignChangeListener extends EventListener {
         return Optional.empty();
     }
 
+    /**
+     * Strips all formatting (color codes, decorations) from a Component,
+     * returning plain text. Replaces the legacy ChatColor.stripColor() usage.
+     */
+    private String stripFormatting(String text) {
+        // Parse as legacy to strip § codes, then serialize as plain text
+        Component component = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+                .legacySection().deserialize(text);
+        return PlainTextComponentSerializer.plainText().serialize(component);
+    }
+
     private void handleSignNearbyProtection(SignChangeEvent event, Protection protection) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
@@ -52,7 +64,7 @@ public class SignChangeListener extends EventListener {
 
         // If a sign type was already specified, don't allow changing it
         if (oldSignType.isPresent() && !oldSignType.equals(newSignType)) {
-            event.setLine(0, ChatColor.stripColor(plugin.getChestSettings()
+            event.setLine(0, stripFormatting(plugin.getChestSettings()
                     .getFancyLocalizedHeader(oldSignType.get(), event.getLine(0))));
             newSignType = oldSignType;
         }
