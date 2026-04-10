@@ -34,17 +34,19 @@ public class ProtectionUpdaterImpl implements ProtectionUpdater {
         if (profile.getUniqueId().isPresent()) {
            Player player = server.getPlayer(profile.getUniqueId().get());
            if (player != null && !player.getName().equals(profile.getDisplayName())) {
+               // Found a changed name
                return profileFactory.fromPlayer(player);
            }
            return null;
         } else {
+            // Found a missing unique id
             String name = profile.getDisplayName();
             if (name.isEmpty()) {
-                return null;
+                return null; // Empty line, ignore
             }
             Player player = server.getPlayerExact(name);
             if (player == null) {
-                return null;
+                return null; // No player online with that name, lookup failed
             }
             return profileFactory.fromPlayer(player);
         }
@@ -61,7 +63,7 @@ public class ProtectionUpdaterImpl implements ProtectionUpdater {
     private List<Profile> updateProfiles(ProtectionSign protectionSign) {
         List<Profile> updatedProfiles = null;
 
-        int i = -1;
+        int i = -1; // Will be 0 at first iteration
         for (Profile profile : protectionSign.getProfiles()) {
             i++;
 
@@ -70,10 +72,11 @@ public class ProtectionUpdaterImpl implements ProtectionUpdater {
             }
             PlayerProfile updatedProfile = getUpdatedProfile((PlayerProfile) profile);
             if (updatedProfile == null) {
-                continue;
+                continue; // Nothing to update
             }
 
             if (updatedProfiles == null) {
+                // Need to initialize list
                 updatedProfiles = new ArrayList<>(protectionSign.getProfiles());
             }
             updatedProfiles.set(i, updatedProfile);
