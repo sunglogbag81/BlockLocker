@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
@@ -34,19 +34,17 @@ public class ProtectionUpdaterImpl implements ProtectionUpdater {
         if (profile.getUniqueId().isPresent()) {
            Player player = server.getPlayer(profile.getUniqueId().get());
            if (player != null && !player.getName().equals(profile.getDisplayName())) {
-               // Found a changed name
                return profileFactory.fromPlayer(player);
            }
            return null;
         } else {
-            // Found a missing unique id
             String name = profile.getDisplayName();
             if (name.isEmpty()) {
-                return null; // Empty line, ignore
+                return null;
             }
             Player player = server.getPlayerExact(name);
             if (player == null) {
-                return null; // No player online with that name, lookup failed
+                return null;
             }
             return profileFactory.fromPlayer(player);
         }
@@ -63,7 +61,7 @@ public class ProtectionUpdaterImpl implements ProtectionUpdater {
     private List<Profile> updateProfiles(ProtectionSign protectionSign) {
         List<Profile> updatedProfiles = null;
 
-        int i = -1; // Will be 0 at first iteration
+        int i = -1;
         for (Profile profile : protectionSign.getProfiles()) {
             i++;
 
@@ -72,11 +70,10 @@ public class ProtectionUpdaterImpl implements ProtectionUpdater {
             }
             PlayerProfile updatedProfile = getUpdatedProfile((PlayerProfile) profile);
             if (updatedProfile == null) {
-                continue; // Nothing to update
+                continue;
             }
 
             if (updatedProfiles == null) {
-                // Need to initialize list
                 updatedProfiles = new ArrayList<>(protectionSign.getProfiles());
             }
             updatedProfiles.set(i, updatedProfile);

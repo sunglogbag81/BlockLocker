@@ -2,7 +2,7 @@ package nl.rutgerkok.blocklocker.impl;
 
 import java.util.Collection;
 
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -89,7 +89,7 @@ public final class CompleteDoor {
     }
 
     @Nullable
-    private static Block getRelativeOrNull(@Nullable Block block, @Nullable  BlockFace face) {
+    private static Block getRelativeOrNull(@Nullable Block block, @Nullable BlockFace face) {
         if (block == null || face == null) {
             return null;
         }
@@ -213,7 +213,6 @@ public final class CompleteDoor {
             blocks.add(bottomLeftBlock.getRelative(BlockFace.DOWN));
             blocks.add(bottomLeftBlock.getRelative(toLeft));
             if (bottomRightBlock == null) {
-                // Single door, add block to the right too
                 blocks.add(bottomLeftBlock.getRelative(toRight));
             }
         }
@@ -222,7 +221,6 @@ public final class CompleteDoor {
             blocks.add(bottomRightBlock.getRelative(BlockFace.DOWN));
             blocks.add(bottomRightBlock.getRelative(toRight));
             if (bottomLeftBlock == null) {
-                // Single door, add block to the left too
                 blocks.add(bottomRightBlock.getRelative(toLeft));
             }
         }
@@ -231,7 +229,6 @@ public final class CompleteDoor {
             blocks.add(topLeftBlock.getRelative(BlockFace.UP));
             blocks.add(topLeftBlock.getRelative(toLeft));
             if (topRightBlock == null) {
-                // Single door, add block to the right too
                 blocks.add(topLeftBlock.getRelative(toRight));
             }
         }
@@ -240,7 +237,6 @@ public final class CompleteDoor {
             blocks.add(topRightBlock.getRelative(BlockFace.UP));
             blocks.add(topRightBlock.getRelative(toRight));
             if (topLeftBlock == null) {
-                // Single door, add block to the left too
                 blocks.add(topRightBlock.getRelative(toLeft));
             }
         }
@@ -310,12 +306,11 @@ public final class CompleteDoor {
         }
 
         Sound sound = OpenBlockSound.get(bottomBlock.getType(), open);
-
         bottomBlock.getWorld().playSound(bottomBlock.getLocation(), sound, 1f, 0.7f);
     }
 
     /**
-     * Opens or closes the door. If the door has been destroyed after creating
+     * Opens or closes the door.
      *
      * @param open
      *            Whether the door must be opened (true) or closed (false).
@@ -325,23 +320,15 @@ public final class CompleteDoor {
     public void setOpen(boolean open, SoundCondition soundAction) {
         Door leftDoor = asDoorMaterialOrNull(bottomLeftBlock);
         if (leftDoor != null) {
-            // Sound effect
             playSound(bottomLeftBlock, open, soundAction);
-
-            // Don't play sound for other half
             soundAction = SoundCondition.NEVER;
-
-            // Door toggle
             leftDoor.setOpen(open);
             bottomLeftBlock.setBlockData(leftDoor);
         }
 
         Door rightDoor = asDoorMaterialOrNull(bottomRightBlock);
         if (rightDoor != null) {
-            // Sound effect
             playSound(bottomRightBlock, open, soundAction);
-
-            // Door toggle
             rightDoor.setOpen(open);
             bottomRightBlock.setBlockData(rightDoor);
         }
