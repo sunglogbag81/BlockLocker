@@ -232,6 +232,8 @@ public class BlockLockerPluginImpl extends JavaPlugin implements BlockLockerPlug
 
     /**
      * Registers all events of this plugin.
+     * GolemListener requires Paper 26.1+ (ItemTransportingEntityValidateTargetEvent).
+     * Falls back gracefully on older or non-Paper servers.
      */
     private void registerEvents() {
         PluginManager plugins = Bukkit.getPluginManager();
@@ -239,15 +241,21 @@ public class BlockLockerPluginImpl extends JavaPlugin implements BlockLockerPlug
         plugins.registerEvents(new BlockPlaceListener(this), this);
         plugins.registerEvents(new InteractListener(this), this);
 
-        // Copper golem listener is not available on Spigot & older Minecraft versions
+        // GolemListener requires Paper 26.1+
+        // Check both the legacy (pre-26.1) and current package locations for compatibility
+        boolean golemEventAvailable = false;
         try {
             Class.forName("io.papermc.paper.event.entity.ItemTransportingEntityValidateTargetEvent");
+            golemEventAvailable = true;
+        } catch (ClassNotFoundException ignored) {
+            // Not available on this server version
+        }
+
+        if (golemEventAvailable) {
             plugins.registerEvents(new GolemListener(this), this);
-        } catch (ClassNotFoundException e) {
-            if (!config.allowDestroyBy(AttackType.GOLEM)) {
-                getLogger().warning("Failed to register copper golem listener. Paper 1.21.10+ is required for this" +
-                        " to function. Add GOLEM to allowDestroyBy in the config.yml to disable this warning.");
-            }
+        } else if (!config.allowDestroyBy(AttackType.GOLEM)) {
+            getLogger().warning("Failed to register copper golem listener. Paper 26.1+ is required for this" +
+                    " to function. Add GOLEM to allowDestroyBy in the config.yml to disable this warning.");
         }
 
         plugins.registerEvents(new SignChangeListener(this), this);
