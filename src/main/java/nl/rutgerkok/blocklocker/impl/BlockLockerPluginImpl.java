@@ -55,6 +55,7 @@ public class BlockLockerPluginImpl extends JavaPlugin implements BlockLockerPlug
     private SchedulerSupport schedulerSupport;
     private ProtectionCache protectionCache;
     private ContainerSettingsManager containerSettingsManager;
+    private BypassManager bypassManager;
     private BlockLockerCommand blockLockerCommand;
 
     @Override
@@ -81,6 +82,10 @@ public class BlockLockerPluginImpl extends JavaPlugin implements BlockLockerPlug
 
     public ContainerSettingsManager getContainerSettingsManager() {
         return containerSettingsManager;
+    }
+
+    public BypassManager getBypassManager() {
+        return bypassManager;
     }
 
     /**
@@ -180,6 +185,7 @@ public class BlockLockerPluginImpl extends JavaPlugin implements BlockLockerPlug
         // Scheduler
         schedulerSupport = new SchedulerSupport(this);
         containerSettingsManager = new ContainerSettingsManager(this);
+        bypassManager = new BypassManager(this);
 
         // Configuration
         saveDefaultConfig();

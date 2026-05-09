@@ -13,6 +13,9 @@ permissions:
   blocklocker.bypass:
     description: "Bypass someone else's protection, but don't allow destroying it."
     default: op
+  blocklocker.bypass.manage:
+    description: "Manage players that can bypass protections without being operators."
+    default: op
   blocklocker.admin:
     description: "Edit someone's protection signs, or remove the protection entirely."
     default: op
@@ -25,6 +28,5 @@ permissions:
 commands:
   blocklocker:
     description: "Administration commands for BlockLocker."
-    permission: "blocklocker.reload"
-    usage: "/<command> reload"
+    usage: "/<command> reload|setting|bypass"
     aliases: "bl"

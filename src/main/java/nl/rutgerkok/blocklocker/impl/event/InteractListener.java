@@ -110,7 +110,7 @@ public final class InteractListener extends EventListener {
         }
 
         // Allow admins to bypass the protection
-        if (!allowed && player.hasPermission(Permissions.CAN_BYPASS)) {
+        if (!allowed && (player.hasPermission(Permissions.CAN_BYPASS) || plugin.getBypassManager().canBypass(player))) {
             allowed = true;
             if (!clickedSign) {
                 // Only show message about bypass when not clicking a sign

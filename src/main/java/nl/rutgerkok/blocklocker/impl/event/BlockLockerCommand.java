@@ -54,19 +54,28 @@ public final class BlockLockerCommand implements TabExecutor {
         if (args[0].equalsIgnoreCase("setting") || args[0].equalsIgnoreCase("settings")) {
             return settingCommand(sender, args);
         }
+        if (args[0].equalsIgnoreCase("bypass")) {
+            return bypassCommand(sender, args);
+        }
         return false;
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("reload", "setting");
+            return Arrays.asList("reload", "setting", "bypass");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("setting")) {
             return Arrays.asList("on", "off", "toggle");
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("setting") && args[1].equalsIgnoreCase("toggle")) {
             return Arrays.stream(ContainerSetting.values()).map(ContainerSetting::getCommandName).toList();
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("bypass")) {
+            return Arrays.asList("add", "remove", "list");
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("bypass") && args[1].equalsIgnoreCase("remove")) {
+            return plugin.getBypassManager().getPlayerNames();
         }
         return Collections.emptyList();
     }
@@ -194,6 +203,43 @@ public final class BlockLockerCommand implements TabExecutor {
         plugin.getProtectionCache().invalidate(block);
         player.sendMessage(ChatColor.GOLD + setting.getDisplayName() + " is now " + onOff(newValue) + ChatColor.GOLD + ".");
         sendSettingsMenu(player, block, protection);
+        return true;
+    }
+
+    private boolean bypassCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission(Permissions.CAN_MANAGE_BYPASS)) {
+            plugin.getTranslator().sendMessage(sender, Translation.COMMAND_NO_PERMISSION);
+            return true;
+        }
+        if (args.length == 2 && args[1].equalsIgnoreCase("list")) {
+            List<String> players = plugin.getBypassManager().getPlayerNames();
+            if (players.isEmpty()) {
+                sender.sendMessage(ChatColor.GOLD + "No players are allowed to bypass BlockLocker protections.");
+            } else {
+                sender.sendMessage(ChatColor.GOLD + "BlockLocker bypass players: " + ChatColor.YELLOW + String.join(", ", players));
+            }
+            return true;
+        }
+        if (args.length == 3 && args[1].equalsIgnoreCase("add")) {
+            String playerName = args[2];
+            boolean changed = plugin.getBypassManager().add(playerName);
+            plugin.getBypassManager().save(plugin);
+            sender.sendMessage(ChatColor.GOLD + playerName + (changed
+                    ? " can now bypass BlockLocker protections."
+                    : " was already allowed to bypass BlockLocker protections."));
+            return true;
+        }
+        if (args.length == 3 && args[1].equalsIgnoreCase("remove")) {
+            String playerName = args[2];
+            boolean changed = plugin.getBypassManager().remove(playerName);
+            plugin.getBypassManager().save(plugin);
+            sender.sendMessage(ChatColor.GOLD + playerName + (changed
+                    ? " can no longer bypass BlockLocker protections."
+                    : " was not on the BlockLocker bypass list."));
+            return true;
+        }
+
+        sender.sendMessage(ChatColor.RED + "Usage: /blocklocker bypass <add|remove|list> [player]");
         return true;
     }
 

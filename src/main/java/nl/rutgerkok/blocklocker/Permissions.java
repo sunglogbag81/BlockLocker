@@ -7,6 +7,7 @@ import org.bukkit.permissions.PermissionDefault;
 
 public final class Permissions {
     public static final String CAN_BYPASS = "blocklocker.bypass";
+    public static final String CAN_MANAGE_BYPASS = "blocklocker.bypass.manage";
     public static final String CAN_ADMIN = "blocklocker.admin";
     public static final String CAN_PROTECT = "blocklocker.protect";
     public static final String CAN_RELOAD = "blocklocker.reload";
