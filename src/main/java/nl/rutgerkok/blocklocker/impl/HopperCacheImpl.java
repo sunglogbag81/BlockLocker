@@ -51,4 +51,10 @@ final class HopperCacheImpl implements ProtectionCache {
     public void setAllowed(Block block, CacheType cacheType, boolean allowed) {
         getCache(cacheType).put(block, allowed);
     }
+
+    @Override
+    public void invalidate(Block block) {
+        redstoneCache.invalidate(block);
+        golemCache.invalidate(block);
+    }
 }

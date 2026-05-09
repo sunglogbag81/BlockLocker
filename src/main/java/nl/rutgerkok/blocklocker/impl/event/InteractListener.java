@@ -28,7 +28,8 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.entity.EntityInteractEvent;
-import org.bukkit.event.inventory.InventoryMoveItemEvent;                                   
+import org.bukkit.event.inventory.InventoryMoveItemEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerTakeLecternBookEvent;
 import org.bukkit.inventory.EquipmentSlot;
@@ -52,8 +53,11 @@ public final class InteractListener extends EventListener {
     private static final Set<BlockFace> AUTOPLACE_BLOCK_FACES = ImmutableSet.of(BlockFace.NORTH, BlockFace.EAST,
             BlockFace.SOUTH, BlockFace.WEST, BlockFace.UP);
 
-    public InteractListener(BlockLockerPluginImpl plugin) {
+    private final BlockLockerCommand command;
+
+    public InteractListener(BlockLockerPluginImpl plugin, BlockLockerCommand command) {
         super(plugin);
+        this.command = command;
     }
 
     private boolean allowedByBlockPlaceEvent(Block placedBlock, BlockState replacedBlockState, Block placedAgainst,
@@ -297,16 +301,32 @@ public final class InteractListener extends EventListener {
 
     @EventHandler(ignoreCancelled = true)
     public void onInventoryMoveItemEvent(InventoryMoveItemEvent event) {
+        boolean hopperMove = event.getInitiator() != null && event.getInitiator().getType() == InventoryType.HOPPER;
+
         Block from = getInventoryBlockOrNull(event.getSource());
         if (from != null) {
-            if (isRedstoneDenied(from)) {
+            if (hopperMove) {
+                Optional<Protection> protection = plugin.getProtectionFinder().findProtection(from, SearchMode.MAIN_BLOCKS_ONLY);
+                if (protection.isPresent()
+                        && !plugin.getContainerSettingsManager().getEffective(from, protection.get(), ContainerSetting.HOPPER_OUTPUT)) {
+                    event.setCancelled(true);
+                    return;
+                }
+            } else if (isRedstoneDenied(from)) {
                 event.setCancelled(true);
                 return;
             }
         }
         Block to = getInventoryBlockOrNull(event.getDestination());
         if (to != null) {
-            if (isRedstoneDenied(to)) {
+            if (hopperMove) {
+                Optional<Protection> protection = plugin.getProtectionFinder().findProtection(to, SearchMode.MAIN_BLOCKS_ONLY);
+                if (protection.isPresent()
+                        && !plugin.getContainerSettingsManager().getEffective(to, protection.get(), ContainerSetting.HOPPER_INPUT)) {
+                    event.setCancelled(true);
+                    return;
+                }
+            } else if (isRedstoneDenied(to)) {
                 event.setCancelled(true);
                 return;
             }
@@ -369,6 +389,19 @@ public final class InteractListener extends EventListener {
         boolean usedOffHand = event.getHand() == EquipmentSlot.OFF_HAND;
         Optional<Protection> protection = plugin.getProtectionFinder().findProtection(block);
 
+        if (command.isSettingMode(player)) {
+            if (usedOffHand) {
+                return;
+            }
+            event.setCancelled(true);
+            if (protection.isPresent()) {
+                command.openSettings(player, block, protection.get());
+            } else {
+                player.sendMessage(ChatColor.RED + "This block is not protected by BlockLocker.");
+            }
+            return;
+        }
+
         if (protection.isEmpty()) {
             if (tryPlaceSign(event.getPlayer(), block, event.getBlockFace(), event.getHand(), SignType.PRIVATE)) {
                 event.setCancelled(true);
@@ -380,7 +413,9 @@ public final class InteractListener extends EventListener {
         plugin.getProtectionUpdater().update(protection.get(), false);
 
         // Check if player is allowed, open door
-        if (checkAllowed(player, protection.get(), clickedSign, block)) {
+        boolean publiclyAllowed = !clickedSign
+                && plugin.getContainerSettingsManager().getEffective(block, protection.get(), ContainerSetting.PUBLIC_ACCESS);
+        if (publiclyAllowed || checkAllowed(player, protection.get(), clickedSign, block)) {
             handleAllowed(event, protection.get(), clickedSign, usedOffHand);
         } else {
             handleDisallowed(event, protection.get(), clickedSign, usedOffHand);

@@ -53,5 +53,11 @@ public interface ProtectionCache {
      */
     void setAllowed(Block block, CacheType cacheType, boolean allowed);
 
+    /**
+     * Removes cached values for the given block.
+     *
+     * @param block The block.
+     */
+    void invalidate(Block block);
 
 }

@@ -54,6 +54,8 @@ public class BlockLockerPluginImpl extends JavaPlugin implements BlockLockerPlug
     private CombinedLocationChecker combinedLocationChecker;
     private SchedulerSupport schedulerSupport;
     private ProtectionCache protectionCache;
+    private ContainerSettingsManager containerSettingsManager;
+    private BlockLockerCommand blockLockerCommand;
 
     @Override
     public <E extends Event> E callEvent(E event) {
@@ -75,6 +77,10 @@ public class BlockLockerPluginImpl extends JavaPlugin implements BlockLockerPlug
     @Override
     public ProtectionCache getProtectionCache() {
         return protectionCache;
+    }
+
+    public ContainerSettingsManager getContainerSettingsManager() {
+        return containerSettingsManager;
     }
 
     /**
@@ -173,6 +179,7 @@ public class BlockLockerPluginImpl extends JavaPlugin implements BlockLockerPlug
     private void loadServices() {
         // Scheduler
         schedulerSupport = new SchedulerSupport(this);
+        containerSettingsManager = new ContainerSettingsManager(this);
 
         // Configuration
         saveDefaultConfig();
@@ -237,9 +244,10 @@ public class BlockLockerPluginImpl extends JavaPlugin implements BlockLockerPlug
      */
     private void registerEvents() {
         PluginManager plugins = Bukkit.getPluginManager();
+        blockLockerCommand = new BlockLockerCommand(this);
         plugins.registerEvents(new BlockDestroyListener(this), this);
         plugins.registerEvents(new BlockPlaceListener(this), this);
-        plugins.registerEvents(new InteractListener(this), this);
+        plugins.registerEvents(new InteractListener(this, blockLockerCommand), this);
 
         // GolemListener requires Paper 26.1+
         // Check both the legacy (pre-26.1) and current package locations for compatibility
@@ -259,7 +267,7 @@ public class BlockLockerPluginImpl extends JavaPlugin implements BlockLockerPlug
         }
 
         plugins.registerEvents(new SignChangeListener(this), this);
-        getCommand(getName().toLowerCase(Locale.ROOT)).setExecutor(new BlockLockerCommand(this));
+        getCommand(getName().toLowerCase(Locale.ROOT)).setExecutor(blockLockerCommand);
     }
 
     @Override

@@ -2,6 +2,7 @@ package nl.rutgerkok.blocklocker.impl.event;
 
 import io.papermc.paper.event.entity.ItemTransportingEntityValidateTargetEvent;
 import nl.rutgerkok.blocklocker.AttackType;
+import nl.rutgerkok.blocklocker.ContainerSetting;
 import nl.rutgerkok.blocklocker.ProtectionCache;
 import nl.rutgerkok.blocklocker.SearchMode;
 import nl.rutgerkok.blocklocker.impl.BlockLockerPluginImpl;
@@ -48,8 +49,8 @@ public final class GolemListener extends EventListener {
             cache.setAllowed(block, ProtectionCache.CacheType.GOLEM, false);
             return;
         }
-        Profile golemProfile = plugin.getProfileFactory().fromGolem();
-        boolean allowed = protection.get().isAllowed(golemProfile);
+        boolean allowed = plugin.getContainerSettingsManager()
+                .getEffective(block, protection.get(), ContainerSetting.GOLEM_ACCESS);
         cache.setAllowed(block, ProtectionCache.CacheType.GOLEM, allowed);
         if (!allowed) {
             event.setAllowed(false);
