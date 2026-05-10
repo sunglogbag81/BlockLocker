@@ -397,7 +397,7 @@ public final class InteractListener extends EventListener {
             if (protection.isPresent()) {
                 command.openSettings(player, block, protection.get());
             } else {
-                player.sendMessage(ChatColor.RED + "This block is not protected by BlockLocker.");
+                player.sendMessage(ChatColor.RED + "이 블록은 BlockLocker로 보호되어 있지 않습니다.");
             }
             return;
         }

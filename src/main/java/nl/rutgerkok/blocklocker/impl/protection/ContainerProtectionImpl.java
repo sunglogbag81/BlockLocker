@@ -93,6 +93,11 @@ public final class ContainerProtectionImpl extends AbstractProtection implements
     }
 
     @Override
+    public Collection<Block> getProtectedBlocks() {
+        return this.blocks;
+    }
+
+    @Override
     public Block getSomeProtectedBlock() {
         for (Block block : this.blocks) {
             return block;

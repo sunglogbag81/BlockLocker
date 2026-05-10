@@ -4,10 +4,10 @@ package nl.rutgerkok.blocklocker;
  * Per-container settings that can override the default sign-based behaviour.
  */
 public enum ContainerSetting {
-    HOPPER_INPUT("hopper-input", "Hopper input"),
-    HOPPER_OUTPUT("hopper-output", "Hopper output"),
-    PUBLIC_ACCESS("public-access", "Public access"),
-    GOLEM_ACCESS("golem-access", "Golem access");
+    HOPPER_INPUT("hopper-input", "호퍼 입력"),
+    HOPPER_OUTPUT("hopper-output", "호퍼 출력"),
+    PUBLIC_ACCESS("public-access", "공용 접근"),
+    GOLEM_ACCESS("golem-access", "골렘 접근");
 
     private final String commandName;
     private final String displayName;

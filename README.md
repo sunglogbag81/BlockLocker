@@ -1,161 +1,91 @@
 BlockLocker
 ===========
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/rutgerkok/BlockLocker/build.yml?branch=master)](https://github.com/rutgerkok/BlockLocker/actions/workflows/build.yml)  [![Download at Hangar](https://img.shields.io/badge/download-hangar.papermc.io-cyan.svg)](https://hangar.papermc.io/Rutger/BlockLocker)
-[![Latest release](https://img.shields.io/github/release/rutgerkok/BlockLocker.svg)](https://github.com/rutgerkok/BlockLocker/releases)
-[![Commits since latest release](https://img.shields.io/github/commits-since/rutgerkok/BlockLocker/latest.svg)](https://github.com/rutgerkok/BlockLocker/releases)
+표지판으로 Minecraft의 개별 블록(상자 등)을 잠그는 플러그인입니다.
 
-Plugin for locking individual blocks in Minecraft (like chests) using signs.
+주요 기능
+--------
 
-Current features:
+* `[개인]` / `[Private]`, `[추가 사용자]` / `[More Users]` 표지판으로 상자, 화로, 문 및 여러 컨테이너를 보호합니다.
+* 컨테이너에 표지판을 붙이면 `[개인]`과 플레이어 이름이 자동으로 입력됩니다.
+* 보호 소유자만 보호를 파괴할 수 있습니다.
+* 관리자는 보호된 문과 컨테이너를 열 수 있습니다.
+* UUID 지원
+  * UUID는 표지판의 숨겨진 데이터에 저장되며 일반 유저에게 보이지 않습니다.
+  * Lockette/Deadbolt 표지판을 읽을 때 UUID를 자동 조회합니다.
+* 설정 가능
+  * 메시지는 한국어로 번역되어 있으며, `translations-kr.yml`을 수정해 커스터마이징할 수 있습니다.
+  * 보호 가능한 블록 종류를 변경할 수 있습니다.
+* 그룹 지원: 표지판에 `[MyGroup]`을 추가하면 `blocklocker.group.mygroup` 권한, 스코어보드 팀, MassiveCraft Factions의 같은 이름 팩션 유저가 접근할 수 있습니다.
+* 복잡한 블록 처리
+  * 양문 지원: 한쪽을 보호하면 반대쪽도 보호되고, 한쪽을 열면 반대쪽도 함께 열립니다.
+  * 문 자동 닫힘 설정 지원
+  * 큰 상자 지원: 한쪽을 보호하면 다른 한쪽도 보호됩니다.
+  * 큰 상자의 컨테이너 설정은 두 블록 모두에 함께 저장됩니다.
+  * 트랩도어/울타리 문도 본체 또는 지지 블록에 표지판을 붙일 수 있습니다.
+* 보호 소유자는 `/blocklocker <줄 번호> <이름>` 명령어로 표지판을 수정할 수 있습니다.
+* 업데이트 알림을 지원합니다.
 
-* Locks chests, furnaces, doors and a few other containers using the familiar `[Private]` and `[More Users]` signs.
-* Signs placed against a container are automatically filled with `[Private]` and the name of the player.
-* Only the owner of a protection can destroy a protection.
-* Admins can still open protected doors and containers.
-* UUID support
-  * UUIDs are saved to hidden hover text data on the sign, never visible for users.
-  * Automatically looks up UUIDs for signs from Lockette and Deadbolt when they are read.
-* Fully configurable
-  * All messages can be translated.
-  * You can change which block types can be protected. Even more complex blocks like levers work correctly.
-* Group support: adding `[MyGroup]` to the sign will allow anyone with the permission node `blocklocker.group.mygroup` (grant the lowercase node) and anyone in a scoreboard team or in a faction of MassiveCraft Factions called `MyGroup` (case insensitive).
-* Correctly handles complex blocks:
-  * Double door support: protecting one half also protects the other half, opening one half opens the other half.
-  * Doors can be set to close automatically. BlockLocker does not just toggle the open state, it will actually close the door.
-  * Double chest support: protecting one half also proects the other half.
-  * Trapdoor support: the sign can be attached to either the "hinge"-block or the trapdoor itself.
-  * Fence gate support: the sign can be attached to either the the fence gate block or the block below.
-* The owner of a protection can change the signs after creating them using the `/blocklocker <line number> <name>` command.
-* Auto-updater, so that you are notified when there is a new version available.
+빌드
+----
 
-Compilation
------------
+Maven을 사용합니다.
 
-BlockLocker uses Maven.
-
-* Install [Maven 3](http://maven.apache.org/download.html)
-* Download this repo and run the command `mvn clean install`
-
-After running the command there will be a file `blocklocker-XX.jar` (where `XX` is a version number) in the `target` folder.
-
-Hooking into BlockLocker
-------------------------
-
-BlockLocker has two APIs for other plugins to use: version 1 and version 2. Right now, the only difference between them is that version 1 uses `com.google.common.base.Optional` while version 2 uses `java.util.Optional`. Version 1 was first included in BlockLocker 0.1, and the plan is to include it in all future versions of BlockLocker as long as the class `com.google.common.base.Optional` exists. Version 2 was realeased on November 17, 2019 with BlockLocker 1.7.
-
-* If your plugin supports Minecraft 1.14, chances are that people are still using BlockLocker 1.6, and you should use API version 1.
-* If your plugin supports Minecraft 1.13 or older, you'll have to use API version 1, as version 2 is not available for Minecraft 1.13.
-* If your plugin only supports Minecraft 1.15 and newer, then you can safely use API version 2.
-
-### Maven
-Add the following repository to your `pom.xml` file:
-
-```xml
-<repository>
-	<id>codemc-repo</id>
-	<url>https://repo.codemc.org/repository/maven-public/</url>
-</repository>
+```bash
+mvn clean package
 ```
 
-Add the following file:
+빌드 후 `target` 폴더에 `blocklocker-XX.jar` 파일이 생성됩니다.
 
-```xml
-<dependency>
-	<groupId>nl.rutgerkok</groupId>
-	<artifactId>blocklocker</artifactId>
-	<version>1.9</version>
-	<scope>provided</scope>
-</dependency>
+명령어
+------
+
+```text
+/blocklocker reload
+/blocklocker setting
+/blocklocker setting on
+/blocklocker setting off
+/blocklocker setting toggle <hopper-input|hopper-output|public-access|golem-access>
+/blocklocker bypass <add|remove|list> [플레이어]
 ```
 
-If you want to use API version 1, use BlockLocker version 0.1, otherwise for API version 2 use BlockLocker 1.7. Other BlockLocker versions are not uploaded to this repository.
+권한
+----
 
-### Check whether the plugin is enabled
+* `blocklocker.protect` — 컨테이너와 문 보호
+* `blocklocker.bypass` — 다른 사람의 보호 우회
+* `blocklocker.bypass.manage` — 우회 허용 플레이어 관리
+* `blocklocker.admin` — 다른 사람의 보호 표지판 수정/제거
+* `blocklocker.reload` — 플러그인 리로드
+* `blocklocker.wilderness` — Towny 클레임 밖 야생 지역에 상자 설치
+
+개발자 API
+----------
+
+다른 플러그인에서 BlockLocker와 연동하려면 `BlockLockerAPI` 또는 `BlockLockerAPIv2`를 사용할 수 있습니다.
+
+플러그인 활성화 확인:
+
 ```java
 boolean enabled = Bukkit.getPluginManager().getPlugin("BlockLocker") != null;
 ```
 
-### The BlockLockerAPI - version 1
-The nice thing about API version 1 is that it works with all old BlockLocker versions, all the way back to version 0.1. Version 1 still uses the `com.google.common.base.Optional` class. Because Java 8 also includes an `Optional` class, it can be expected that Google's `Optional` will be removed at some point in the future. At this moment, this API will also dissappear. However, currently the `Optional` class is not deprecated by Google, so it will take at least two years for that class to get removed. So it's still safe to use this API.
-
-Example usage:
+소유자 조회 예시:
 
 ```java
 Optional<OfflinePlayer> owner = BlockLockerAPI.getOwner(block);
 ```
 
-In version 0.1 these methods were available in the BlockLockerAPI class:
-
-```
-getOwner(Block block)
-getOwnerDisplayName(Block block)
-isAllowed(Player player, Block block, boolean serverAdminsAlwaysAllowed)
-isOwner(Player player, Block block)
-isProtected(Block block)
-```
-
-You can view the complete class, along with documentation, [here](https://github.com/rutgerkok/BlockLocker/blob/master/src/main/java/nl/rutgerkok/blocklocker/BlockLockerAPI.java).
-
-If you solely use these methods, your plugin will work with *all* versions of BlockLocker from the past.
-
-### The BlockLockerAPI - version 2
-Use the class `BlockLockerAPIv2` instead of `BlockLockerAPI`. There are no differences between version 2 and version 1 yet, except that the API now uses `java.util.Optional` instead of the older `com.google.common.base.Optional`.
-
-### More advanced functionality
-To block placement of protection signs in certain areas, you can listen to the `PlayerProtectionCreateEvent` of BlockLocker or the `BlockPlaceEvent` of Bukkit. This works even for auto-placed signs.
-
-I have kept the number of methods in BlockLockerAPI small, as each method will need
-to be around in all future versions of BlockLocker. If you need to do something more
-advanced, you need to venture outside the class. Keep in mind that your plugin might
-break in the future. Here are some things that you can do.
-
-Here's an example for checking whether redstone is allowed in the protection:
+Redstone 접근 가능 여부 확인 예시:
 
 ```java
 private boolean isRedstoneAllowed(Block block) {
     BlockLockerPlugin plugin = BlockLockerAPIv2.getPlugin();
     Optional<Protection> protection = plugin.getProtectionFinder().findProtection(block);
     if (!protection.isPresent()) {
-        // Not protected, so redstone is allowed to change things here
         return true;
     }
     Profile redstoneProfile = plugin.getProfileFactory().fromRedstone();
-    // Will return true when [Redstone] or [Everyone] is on one of the signs
     return protection.get().isAllowed(redstoneProfile);
 }
 ```
-
-Here's an example of how to add a custom group system:
-
-```java
-BlockLockerAPIv2.getPlugin().getGroupSystems().addSystem(new GroupSystem() {
-
-            @Override
-            public boolean isInGroup(Player player, String groupName) {
-                // TODO Auto-generated method stub
-                return false;
-            }});
-```
-
-Here's an example of how to add another block type as a protectable type:
-
-```java
-    BlockLockerAPIv2.getPlugin().getChestSettings().getExtraProtectables().add(new ProtectableBlocksSettings() {
-
-            @Override
-            public boolean canProtect(Block block) {
-                // Return whether the block can be protected by ANY of the protection types (CONTAINER, DOOR, etc.)
-		// Must be consistent with the method below
-                return false;
-            }
-
-            @Override
-            public boolean canProtect(ProtectionType type, Block block) {
-                // Return whether the block can be protected by the given protection types (CONTAINER, DOOR, etc.)
-		// Must be consistent with the method above
-                return false;
-            }});
-```
-
-If you believe that a method should be added to BlockLockerAPI, please create a Github issue in this repository.

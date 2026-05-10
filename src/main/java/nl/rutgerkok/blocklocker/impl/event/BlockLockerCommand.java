@@ -1,6 +1,7 @@
 package nl.rutgerkok.blocklocker.impl.event;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +18,7 @@ import nl.rutgerkok.blocklocker.ContainerSetting;
 import nl.rutgerkok.blocklocker.impl.BlockLockerPluginImpl;
 import nl.rutgerkok.blocklocker.impl.ContainerSettingsManager;
 import nl.rutgerkok.blocklocker.profile.PlayerProfile;
+import nl.rutgerkok.blocklocker.protection.ContainerProtection;
 import nl.rutgerkok.blocklocker.protection.Protection;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -90,7 +92,7 @@ public final class BlockLockerCommand implements TabExecutor {
             return;
         }
         if (!plugin.getContainerSettingsManager().canStoreSettings(block)) {
-            player.sendMessage(ChatColor.RED + "This block can't store BlockLocker settings.");
+            player.sendMessage(ChatColor.RED + "이 블록에는 BlockLocker 설정을 저장할 수 없습니다.");
             return;
         }
         selectedBlocks.put(player.getUniqueId(), block.getLocation());
@@ -116,14 +118,14 @@ public final class BlockLockerCommand implements TabExecutor {
     }
 
     private String onOff(boolean value) {
-        return value ? ChatColor.GREEN + "ON" : ChatColor.RED + "OFF";
+        return value ? ChatColor.GREEN + "켜짐" : ChatColor.RED + "꺼짐";
     }
 
     private void sendSettingsMenu(Player player, Block block, Protection protection) {
         ContainerSettingsManager manager = plugin.getContainerSettingsManager();
-        player.sendMessage(ChatColor.GOLD + "BlockLocker settings for " + block.getType().name().toLowerCase(Locale.ROOT)
-                + " at " + block.getX() + ", " + block.getY() + ", " + block.getZ());
-        player.sendMessage(ChatColor.GRAY + "Click [toggle] to change only this block.");
+        player.sendMessage(ChatColor.GOLD + block.getType().name().toLowerCase(Locale.ROOT)
+                + " 설정 - 위치: " + block.getX() + ", " + block.getY() + ", " + block.getZ());
+        player.sendMessage(ChatColor.GRAY + "[전환]을 클릭하면 이 보호에 포함된 모든 컨테이너 블록에 함께 적용됩니다.");
         for (ContainerSetting setting : ContainerSetting.values()) {
             boolean value = manager.getEffective(block, protection, setting);
             sendSettingLine(player, setting, value);
@@ -133,8 +135,8 @@ public final class BlockLockerCommand implements TabExecutor {
     private void sendSettingLine(Player player, ContainerSetting setting, boolean value) {
         String command = "/blocklocker setting toggle " + setting.getCommandName();
         player.sendMessage(Component.text("- " + setting.getDisplayName() + ": ", NamedTextColor.YELLOW)
-                .append(Component.text(value ? "ON" : "OFF", value ? NamedTextColor.GREEN : NamedTextColor.RED))
-                .append(Component.text("  [toggle]", NamedTextColor.GRAY)
+                .append(Component.text(value ? "켜짐" : "꺼짐", value ? NamedTextColor.GREEN : NamedTextColor.RED))
+                .append(Component.text("  [전환]", NamedTextColor.GRAY)
                         .clickEvent(ClickEvent.runCommand(command))
                         .hoverEvent(HoverEvent.showText(Component.text(command, NamedTextColor.GRAY)))));
     }
@@ -153,19 +155,19 @@ public final class BlockLockerCommand implements TabExecutor {
             boolean enabled = !isSettingMode(player);
             settingMode.put(player.getUniqueId(), enabled);
             player.sendMessage(enabled
-                    ? ChatColor.GOLD + "BlockLocker setting mode ON. Right-click one of your protected containers."
-                    : ChatColor.GOLD + "BlockLocker setting mode OFF.");
+                    ? ChatColor.GOLD + "BlockLocker 설정 모드가 켜졌습니다. 보호된 컨테이너를 우클릭하세요."
+                    : ChatColor.GOLD + "BlockLocker 설정 모드가 꺼졌습니다.");
             return true;
         }
         if (args.length == 2 && args[1].equalsIgnoreCase("on")) {
             settingMode.put(player.getUniqueId(), true);
-            player.sendMessage(ChatColor.GOLD + "BlockLocker setting mode ON. Right-click one of your protected containers.");
+            player.sendMessage(ChatColor.GOLD + "BlockLocker 설정 모드가 켜졌습니다. 보호된 컨테이너를 우클릭하세요.");
             return true;
         }
         if (args.length == 2 && args[1].equalsIgnoreCase("off")) {
             settingMode.put(player.getUniqueId(), false);
             selectedBlocks.remove(player.getUniqueId());
-            player.sendMessage(ChatColor.GOLD + "BlockLocker setting mode OFF.");
+            player.sendMessage(ChatColor.GOLD + "BlockLocker 설정 모드가 꺼졌습니다.");
             return true;
         }
         if (args.length == 3 && args[1].equalsIgnoreCase("toggle")) {
@@ -179,13 +181,13 @@ public final class BlockLockerCommand implements TabExecutor {
         try {
             setting = ContainerSetting.fromCommandName(settingName);
         } catch (IllegalArgumentException e) {
-            player.sendMessage(ChatColor.RED + "Unknown setting. Use hopper-input, hopper-output, public-access or golem-access.");
+            player.sendMessage(ChatColor.RED + "알 수 없는 설정입니다. hopper-input, hopper-output, public-access, golem-access 중 하나를 사용하세요.");
             return true;
         }
 
         Optional<SelectedProtection> selected = getSelectedProtection(player);
         if (selected.isEmpty()) {
-            player.sendMessage(ChatColor.RED + "No protected container selected. Use /blocklocker setting and right-click a container first.");
+            player.sendMessage(ChatColor.RED + "선택된 보호 컨테이너가 없습니다. 먼저 /blocklocker setting을 입력한 뒤 컨테이너를 우클릭하세요.");
             return true;
         }
         Block block = selected.get().block();
@@ -195,15 +197,27 @@ public final class BlockLockerCommand implements TabExecutor {
             return true;
         }
         if (!plugin.getContainerSettingsManager().canStoreSettings(block)) {
-            player.sendMessage(ChatColor.RED + "This block can't store BlockLocker settings.");
+            player.sendMessage(ChatColor.RED + "이 블록에는 BlockLocker 설정을 저장할 수 없습니다.");
             return true;
         }
 
         boolean newValue = plugin.getContainerSettingsManager().toggle(block, protection, setting);
-        plugin.getProtectionCache().invalidate(block);
-        player.sendMessage(ChatColor.GOLD + setting.getDisplayName() + " is now " + onOff(newValue) + ChatColor.GOLD + ".");
+        for (Block protectedBlock : getSettingBlocks(block, protection)) {
+            if (!protectedBlock.equals(block) && plugin.getContainerSettingsManager().canStoreSettings(protectedBlock)) {
+                plugin.getContainerSettingsManager().set(protectedBlock, setting, newValue);
+            }
+            plugin.getProtectionCache().invalidate(protectedBlock);
+        }
+        player.sendMessage(ChatColor.GOLD + setting.getDisplayName() + " 설정이 " + onOff(newValue) + ChatColor.GOLD + " 상태가 되었습니다.");
         sendSettingsMenu(player, block, protection);
         return true;
+    }
+
+    private Collection<Block> getSettingBlocks(Block selectedBlock, Protection protection) {
+        if (protection instanceof ContainerProtection containerProtection) {
+            return containerProtection.getProtectedBlocks();
+        }
+        return Collections.singletonList(selectedBlock);
     }
 
     private boolean bypassCommand(CommandSender sender, String[] args) {
@@ -214,9 +228,9 @@ public final class BlockLockerCommand implements TabExecutor {
         if (args.length == 2 && args[1].equalsIgnoreCase("list")) {
             List<String> players = plugin.getBypassManager().getPlayerNames();
             if (players.isEmpty()) {
-                sender.sendMessage(ChatColor.GOLD + "No players are allowed to bypass BlockLocker protections.");
+                sender.sendMessage(ChatColor.GOLD + "BlockLocker 보호를 우회할 수 있는 플레이어가 없습니다.");
             } else {
-                sender.sendMessage(ChatColor.GOLD + "BlockLocker bypass players: " + ChatColor.YELLOW + String.join(", ", players));
+                sender.sendMessage(ChatColor.GOLD + "BlockLocker 우회 허용 플레이어: " + ChatColor.YELLOW + String.join(", ", players));
             }
             return true;
         }
@@ -225,8 +239,8 @@ public final class BlockLockerCommand implements TabExecutor {
             boolean changed = plugin.getBypassManager().add(playerName);
             plugin.getBypassManager().save(plugin);
             sender.sendMessage(ChatColor.GOLD + playerName + (changed
-                    ? " can now bypass BlockLocker protections."
-                    : " was already allowed to bypass BlockLocker protections."));
+                    ? " 플레이어가 이제 BlockLocker 보호를 우회할 수 있습니다."
+                    : " 플레이어는 이미 BlockLocker 보호 우회가 허용되어 있습니다."));
             return true;
         }
         if (args.length == 3 && args[1].equalsIgnoreCase("remove")) {
@@ -234,12 +248,12 @@ public final class BlockLockerCommand implements TabExecutor {
             boolean changed = plugin.getBypassManager().remove(playerName);
             plugin.getBypassManager().save(plugin);
             sender.sendMessage(ChatColor.GOLD + playerName + (changed
-                    ? " can no longer bypass BlockLocker protections."
-                    : " was not on the BlockLocker bypass list."));
+                    ? " 플레이어는 더 이상 BlockLocker 보호를 우회할 수 없습니다."
+                    : " 플레이어는 BlockLocker 우회 목록에 없었습니다."));
             return true;
         }
 
-        sender.sendMessage(ChatColor.RED + "Usage: /blocklocker bypass <add|remove|list> [player]");
+        sender.sendMessage(ChatColor.RED + "사용법: /blocklocker bypass <add|remove|list> [플레이어]");
         return true;
     }
 

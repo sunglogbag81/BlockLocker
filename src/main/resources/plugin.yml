@@ -8,25 +8,25 @@ softdepend: [Guilds, Factions, mcMMO, Towny]
 folia-supported: true
 permissions:
   blocklocker.protect:
-    description: "Protect containers and doors."
+    description: "컨테이너와 문을 보호합니다."
     default: true
   blocklocker.bypass:
-    description: "Bypass someone else's protection, but don't allow destroying it."
+    description: "다른 사람의 보호를 우회합니다. 단, 파괴는 허용하지 않습니다."
     default: op
   blocklocker.bypass.manage:
-    description: "Manage players that can bypass protections without being operators."
+    description: "OP가 아니어도 보호를 우회할 수 있는 플레이어를 관리합니다."
     default: op
   blocklocker.admin:
-    description: "Edit someone's protection signs, or remove the protection entirely."
+    description: "다른 사람의 보호 표지판을 수정하거나 보호를 완전히 제거합니다."
     default: op
   blocklocker.reload:
-    description: "Reload the plugin using /blocklocker reload."
+    description: "/blocklocker reload로 플러그인을 다시 불러옵니다."
     default: op
   blocklocker.wilderness:
-    description: "Place chests in the wilderness (outside of Towny claims)"
+    description: "야생 지역(Towny 클레임 밖)에 상자를 설치할 수 있습니다."
     default: true
 commands:
   blocklocker:
-    description: "Administration commands for BlockLocker."
+    description: "BlockLocker 관리 명령어입니다."
     usage: "/<command> reload|setting|bypass"
     aliases: "bl"

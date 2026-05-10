@@ -26,7 +26,7 @@
 # starting point. It is highly appreciated if you submit your
 # translations to the plugin author, so that others can use them
 # too. Danke schön, gracias, dankon and спасибо!
-languageFile: translations-en.yml
+languageFile: translations-kr.yml
 
 # The updater. Possible values:
 # JUST_NOTIFY - check for updates, notify the server admins
