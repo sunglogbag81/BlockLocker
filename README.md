@@ -42,6 +42,7 @@ mvn clean package
 ------
 
 ```text
+/blocklocker help
 /blocklocker reload
 /blocklocker setting
 /blocklocker setting on

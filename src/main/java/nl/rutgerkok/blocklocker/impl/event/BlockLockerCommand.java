@@ -61,9 +61,12 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            return false;
+            return helpCommand(sender);
         }
 
+        if (args[0].equalsIgnoreCase("help")) {
+            return helpCommand(sender);
+        }
         if (args[0].equalsIgnoreCase("reload")) {
             return reloadCommand(sender);
         }
@@ -91,7 +94,7 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("reload", "setting", "list", "trust", "untrust", "transfer", "bypass");
+            return Arrays.asList("help", "reload", "setting", "list", "trust", "untrust", "transfer", "bypass");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("setting")) {
             return Arrays.asList("on", "off", "toggle");
@@ -579,6 +582,26 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
         }
 
         sender.sendMessage(ChatColor.RED + "사용법: /blocklocker bypass <add|remove|list> [플레이어]");
+        return true;
+    }
+
+    private boolean helpCommand(CommandSender sender) {
+        sender.sendMessage(ChatColor.GOLD + "BlockLocker 명령어");
+        sender.sendMessage(ChatColor.YELLOW + "/bl help" + ChatColor.GRAY + " - 이 도움말을 표시합니다.");
+        sender.sendMessage(ChatColor.YELLOW + "/bl list" + ChatColor.GRAY + " - 바라보는 보호의 소유자와 접근 목록을 봅니다.");
+        sender.sendMessage(ChatColor.YELLOW + "/bl trust <플레이어>" + ChatColor.GRAY + " - 바라보는 보호에 플레이어를 추가합니다.");
+        sender.sendMessage(ChatColor.YELLOW + "/bl untrust <플레이어>" + ChatColor.GRAY + " - 바라보는 보호에서 플레이어를 제거합니다.");
+        sender.sendMessage(ChatColor.YELLOW + "/bl transfer <플레이어>" + ChatColor.GRAY + " - 바라보는 보호의 소유권을 이전합니다.");
+        sender.sendMessage(ChatColor.YELLOW + "/bl setting" + ChatColor.GRAY + " - 설정 모드를 켜거나 끕니다. 보호 컨테이너를 우클릭하면 GUI가 열립니다.");
+        sender.sendMessage(ChatColor.YELLOW + "/bl setting toggle <hopper-input|hopper-output|public-access|golem-access>" + ChatColor.GRAY
+                + " - 선택한 보호의 세부 설정을 전환합니다.");
+        if (sender.hasPermission(Permissions.CAN_MANAGE_BYPASS)) {
+            sender.sendMessage(ChatColor.YELLOW + "/bl bypass <add|remove|list> [플레이어]" + ChatColor.GRAY
+                    + " - 보호 우회 플레이어를 관리합니다.");
+        }
+        if (sender.hasPermission(Permissions.CAN_RELOAD)) {
+            sender.sendMessage(ChatColor.YELLOW + "/bl reload" + ChatColor.GRAY + " - 설정을 다시 불러옵니다.");
+        }
         return true;
     }
 
