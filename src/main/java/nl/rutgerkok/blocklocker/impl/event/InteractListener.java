@@ -563,7 +563,7 @@ public final class InteractListener extends EventListener {
 
         // Decide what the text on the sign is going to be
         Profile profile = signType.isMainSign() ? plugin.getProfileFactory().fromPlayer(player)
-                : plugin.getProfileFactory().fromRedstone();
+                : plugin.getProfileFactory().fromNameAndUniqueId("", Optional.empty());
         ProtectionSign protectionSign = plugin.getProtectionFinder().newProtectionSign(sign, signType, profile);
         String[] newLines = plugin.getSignParser().getDisplayLines(protectionSign);
 

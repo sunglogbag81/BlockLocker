@@ -39,6 +39,7 @@ public final class ProtectionAccessList {
 
     public static List<Profile> getAccessProfiles(Protection protection) {
         List<Profile> profiles = new ArrayList<>();
+        Optional<Profile> owner = protection.getOwner();
         for (ProtectionSign sign : protection.getSigns()) {
             List<Profile> signProfiles = sign.getProfiles();
             for (int i = 0; i < signProfiles.size(); i++) {
@@ -46,9 +47,10 @@ public final class ProtectionAccessList {
                     continue;
                 }
                 Profile profile = signProfiles.get(i);
-                if (!profile.getDisplayName().isBlank()) {
-                    profiles.add(profile);
+                if (profile.getDisplayName().isBlank() || owner.filter(value -> isSameProfile(value, profile)).isPresent()) {
+                    continue;
                 }
+                addUniqueProfile(profiles, profile);
             }
         }
         return profiles;
@@ -66,16 +68,18 @@ public final class ProtectionAccessList {
         }
 
         boolean changed = false;
+        Optional<Profile> owner = protection.getOwner();
         List<Profile> profilesForMoreUsers = new ArrayList<>();
         for (ProtectionSign moreUsersSign : moreUsersSigns) {
-            profilesForMoreUsers.addAll(nonBlank(moreUsersSign.getProfiles()));
+            addAllUniqueNonBlank(profilesForMoreUsers, moreUsersSign.getProfiles(), owner);
         }
 
         Optional<ProtectionSign> privateSign = getPrivateSign(protection);
         if (privateSign.isPresent()) {
             List<Profile> privateProfiles = new ArrayList<>(privateSign.get().getProfiles());
             if (privateProfiles.size() > VISIBLE_PROFILE_LINES) {
-                profilesForMoreUsers.addAll(nonBlank(privateProfiles.subList(VISIBLE_PROFILE_LINES, privateProfiles.size())));
+                addAllUniqueNonBlank(profilesForMoreUsers,
+                        privateProfiles.subList(VISIBLE_PROFILE_LINES, privateProfiles.size()), owner);
                 privateProfiles = new ArrayList<>(privateProfiles.subList(0, VISIBLE_PROFILE_LINES));
                 plugin.getSignParser().saveSign(privateSign.get().withProfiles(privateProfiles));
                 changed = true;
@@ -103,10 +107,19 @@ public final class ProtectionAccessList {
         return changed;
     }
 
-    private static List<Profile> nonBlank(Collection<Profile> profiles) {
-        return profiles.stream()
-                .filter(profile -> !profile.getDisplayName().isBlank())
-                .toList();
+    private static void addAllUniqueNonBlank(List<Profile> target, Collection<Profile> profiles, Optional<Profile> owner) {
+        for (Profile profile : profiles) {
+            if (profile.getDisplayName().isBlank() || owner.filter(value -> isSameProfile(value, profile)).isPresent()) {
+                continue;
+            }
+            addUniqueProfile(target, profile);
+        }
+    }
+
+    private static void addUniqueProfile(List<Profile> target, Profile profile) {
+        if (target.stream().noneMatch(existing -> isSameProfile(existing, profile))) {
+            target.add(profile);
+        }
     }
 
     private static boolean sameProfiles(List<Profile> first, List<Profile> second) {

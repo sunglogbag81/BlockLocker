@@ -357,7 +357,8 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
             return true;
         }
         ProtectionSign sign = signWithSpace.get();
-        boolean hiddenLine = sign.getProfiles().size() >= ProtectionAccessList.VISIBLE_PROFILE_LINES;
+        boolean hiddenLine = sign.getType() == SignType.PRIVATE
+                && sign.getProfiles().size() >= ProtectionAccessList.VISIBLE_PROFILE_LINES;
         List<Profile> profiles = addProfileToFirstFreeLine(sign.getProfiles(), profile);
         plugin.getSignParser().saveSign(sign.withProfiles(profiles));
         plugin.getProtectionCache().invalidate(protection.getSomeProtectedBlock());
@@ -442,8 +443,20 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
         } else {
             profiles.set(0, newOwner);
         }
+        profiles = removeProfileFromAdditionalLines(SignType.PRIVATE, profiles, newOwner);
         plugin.getSignParser().saveSign(mainSign.get().withProfiles(profiles));
+
+        for (ProtectionSign sign : protection.getSigns()) {
+            if (sign.equals(mainSign.get())) {
+                continue;
+            }
+            List<Profile> signProfiles = removeProfile(sign, newOwner);
+            if (signProfiles.size() != sign.getProfiles().size() || !signProfiles.containsAll(sign.getProfiles())) {
+                plugin.getSignParser().saveSign(sign.withProfiles(signProfiles));
+            }
+        }
         plugin.getProtectionCache().invalidate(protection.getSomeProtectedBlock());
+        normalizeFresh(protection);
         player.sendMessage(ChatColor.GOLD + "보호 소유권을 " + newOwner.getDisplayName() + " 플레이어에게 이전했습니다.");
         return true;
     }
@@ -454,11 +467,19 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
     }
 
     private List<Profile> removeProfile(ProtectionSign sign, Profile profileToRemove) {
+        List<Profile> profiles = removeProfileFromAdditionalLines(sign.getType(), sign.getProfiles(), profileToRemove);
+        if (profiles.isEmpty()) {
+            profiles.add(plugin.getProfileFactory().fromNameAndUniqueId("", Optional.empty()));
+        }
+        return profiles;
+    }
+
+    private List<Profile> removeProfileFromAdditionalLines(SignType signType, List<Profile> existingProfiles,
+            Profile profileToRemove) {
         List<Profile> profiles = new ArrayList<>();
-        List<Profile> existingProfiles = sign.getProfiles();
         for (int i = 0; i < existingProfiles.size(); i++) {
             Profile profile = existingProfiles.get(i);
-            if (sign.getType() == SignType.PRIVATE && i == 0) {
+            if (signType == SignType.PRIVATE && i == 0) {
                 // The first line of the [Private] sign is the owner. Use /blocklocker transfer for that.
                 profiles.add(profile);
                 continue;
@@ -466,9 +487,6 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
             if (!isSamePlayer(profile, profileToRemove)) {
                 profiles.add(profile);
             }
-        }
-        if (profiles.isEmpty()) {
-            profiles.add(plugin.getProfileFactory().fromNameAndUniqueId("", Optional.empty()));
         }
         return profiles;
     }
