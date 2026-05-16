@@ -6,7 +6,6 @@ import nl.rutgerkok.blocklocker.profile.Profile;
 import nl.rutgerkok.blocklocker.protection.Protection;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -47,7 +46,7 @@ public final class ProtectionAccessList {
                     continue;
                 }
                 Profile profile = signProfiles.get(i);
-                if (profile.getDisplayName().isBlank() || owner.filter(value -> isSameProfile(value, profile)).isPresent()) {
+                if (shouldSkip(profile, owner)) {
                     continue;
                 }
                 addUniqueProfile(profiles, profile);
@@ -69,51 +68,90 @@ public final class ProtectionAccessList {
 
         boolean changed = false;
         Optional<Profile> owner = protection.getOwner();
-        List<Profile> profilesForMoreUsers = new ArrayList<>();
-        for (ProtectionSign moreUsersSign : moreUsersSigns) {
-            addAllUniqueNonBlank(profilesForMoreUsers, moreUsersSign.getProfiles(), owner);
-        }
+        List<Profile> seenAdditionalProfiles = new ArrayList<>();
 
+        List<Profile> privateOverflow = new ArrayList<>();
         Optional<ProtectionSign> privateSign = getPrivateSign(protection);
         if (privateSign.isPresent()) {
             List<Profile> privateProfiles = new ArrayList<>(privateSign.get().getProfiles());
-            if (privateProfiles.size() > VISIBLE_PROFILE_LINES) {
-                addAllUniqueNonBlank(profilesForMoreUsers,
-                        privateProfiles.subList(VISIBLE_PROFILE_LINES, privateProfiles.size()), owner);
-                privateProfiles = new ArrayList<>(privateProfiles.subList(0, VISIBLE_PROFILE_LINES));
-                plugin.getSignParser().saveSign(privateSign.get().withProfiles(privateProfiles));
+            List<Profile> cleanedPrivateProfiles = new ArrayList<>();
+            for (int i = 0; i < privateProfiles.size(); i++) {
+                Profile profile = privateProfiles.get(i);
+                if (i == 0) {
+                    cleanedPrivateProfiles.add(profile);
+                    continue;
+                }
+                if (shouldSkip(profile, owner) || seenAdditionalProfiles.stream().anyMatch(seen -> isSameProfile(seen, profile))) {
+                    continue;
+                }
+                if (cleanedPrivateProfiles.size() < VISIBLE_PROFILE_LINES) {
+                    cleanedPrivateProfiles.add(profile);
+                    seenAdditionalProfiles.add(profile);
+                } else {
+                    privateOverflow.add(profile);
+                }
+            }
+            if (!sameProfiles(cleanedPrivateProfiles, privateProfiles)) {
+                plugin.getSignParser().saveSign(privateSign.get().withProfiles(cleanedPrivateProfiles));
                 changed = true;
             }
         }
 
-        int index = 0;
         for (ProtectionSign moreUsersSign : moreUsersSigns) {
-            List<Profile> signProfiles = new ArrayList<>();
-            while (index < profilesForMoreUsers.size() && signProfiles.size() < MAX_PROFILES_PER_SIGN) {
-                signProfiles.add(profilesForMoreUsers.get(index));
-                index++;
+            List<Profile> cleanedProfiles = new ArrayList<>();
+            for (Profile profile : moreUsersSign.getProfiles()) {
+                if (shouldSkip(profile, owner) || seenAdditionalProfiles.stream().anyMatch(seen -> isSameProfile(seen, profile))) {
+                    continue;
+                }
+                cleanedProfiles.add(profile);
+                seenAdditionalProfiles.add(profile);
             }
-            if (signProfiles.isEmpty()) {
-                signProfiles.add(plugin.getProfileFactory().fromNameAndUniqueId("", java.util.Optional.empty()));
+            if (cleanedProfiles.isEmpty()) {
+                cleanedProfiles.add(plugin.getProfileFactory().fromNameAndUniqueId("", java.util.Optional.empty()));
             }
-            if (!sameProfiles(signProfiles, moreUsersSign.getProfiles())) {
-                plugin.getSignParser().saveSign(moreUsersSign.withProfiles(signProfiles));
+            if (!sameProfiles(cleanedProfiles, moreUsersSign.getProfiles())) {
+                plugin.getSignParser().saveSign(moreUsersSign.withProfiles(cleanedProfiles));
                 changed = true;
             }
         }
+
+        for (Profile overflowProfile : privateOverflow) {
+            if (seenAdditionalProfiles.stream().noneMatch(seen -> isSameProfile(seen, overflowProfile))) {
+                changed |= appendToFirstMoreUsersSign(moreUsersSigns, overflowProfile, plugin);
+                seenAdditionalProfiles.add(overflowProfile);
+            }
+        }
+
         if (changed) {
             plugin.getProtectionCache().invalidate(protection.getSomeProtectedBlock());
         }
         return changed;
     }
 
-    private static void addAllUniqueNonBlank(List<Profile> target, Collection<Profile> profiles, Optional<Profile> owner) {
-        for (Profile profile : profiles) {
-            if (profile.getDisplayName().isBlank() || owner.filter(value -> isSameProfile(value, profile)).isPresent()) {
-                continue;
+    private static boolean appendToFirstMoreUsersSign(List<ProtectionSign> moreUsersSigns, Profile profile,
+            BlockLockerPluginImpl plugin) {
+        for (ProtectionSign moreUsersSign : moreUsersSigns) {
+            ProtectionSign latestSign = plugin.getSignParser().parseSign(moreUsersSign.getLocation().getBlock())
+                    .orElse(moreUsersSign);
+            List<Profile> profiles = new ArrayList<>(latestSign.getProfiles());
+            for (int i = 0; i < profiles.size(); i++) {
+                if (profiles.get(i).getDisplayName().isBlank()) {
+                    profiles.set(i, profile);
+                    plugin.getSignParser().saveSign(latestSign.withProfiles(profiles));
+                    return true;
+                }
             }
-            addUniqueProfile(target, profile);
+            if (profiles.size() < MAX_PROFILES_PER_SIGN) {
+                profiles.add(profile);
+                plugin.getSignParser().saveSign(latestSign.withProfiles(profiles));
+                return true;
+            }
         }
+        return false;
+    }
+
+    private static boolean shouldSkip(Profile profile, Optional<Profile> owner) {
+        return profile.getDisplayName().isBlank() || owner.filter(value -> isSameProfile(value, profile)).isPresent();
     }
 
     private static void addUniqueProfile(List<Profile> target, Profile profile) {

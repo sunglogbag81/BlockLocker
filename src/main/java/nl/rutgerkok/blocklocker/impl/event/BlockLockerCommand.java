@@ -357,8 +357,7 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
             return true;
         }
         ProtectionSign sign = signWithSpace.get();
-        boolean hiddenLine = sign.getType() == SignType.PRIVATE
-                && sign.getProfiles().size() >= ProtectionAccessList.VISIBLE_PROFILE_LINES;
+        boolean hiddenLine = !hasVisibleProfileLine(sign);
         List<Profile> profiles = addProfileToFirstFreeLine(sign.getProfiles(), profile);
         plugin.getSignParser().saveSign(sign.withProfiles(profiles));
         plugin.getProtectionCache().invalidate(protection.getSomeProtectedBlock());
