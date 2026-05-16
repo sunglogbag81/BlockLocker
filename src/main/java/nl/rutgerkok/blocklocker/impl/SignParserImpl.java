@@ -218,14 +218,21 @@ class SignParserImpl implements SignParser {
         SignSide frontSide = signState.getSide(Side.FRONT);
         SignSide backSide = signState.getSide(Side.BACK);
 
-        // Set headers correctly
+        // Set headers correctly and clear old visible data first, so removed profiles don't linger.
         frontSide.setLine(0, chestSettings.getFancyLocalizedHeader(sign.getType(), frontSide.getLine(0)));
-        if (profiles.size() > 3) {
-            backSide.setLine(0, chestSettings.getFancyLocalizedHeader(SignType.MORE_USERS, backSide.getLine(0)));
+        backSide.setLine(0, profiles.size() > 3
+                ? chestSettings.getFancyLocalizedHeader(SignType.MORE_USERS, backSide.getLine(0))
+                : "");
+        for (int line = 1; line < 4; line++) {
+            frontSide.setLine(line, "");
+            backSide.setLine(line, "");
         }
 
         PersistentDataContainer data = signState.getPersistentDataContainer();
         data.set(HEADER_KEY, PersistentDataType.STRING, sign.getType().toString());
+        for (NamespacedKey profileKey : PROFILE_KEYS) {
+            data.remove(profileKey);
+        }
         int i = 0;
         for (Profile profile : profiles) {
             if (i < 3) {

@@ -254,6 +254,7 @@ public class BlockLockerPluginImpl extends JavaPlugin implements BlockLockerPlug
         plugins.registerEvents(new BlockDestroyListener(this), this);
         plugins.registerEvents(new BlockPlaceListener(this), this);
         plugins.registerEvents(new InteractListener(this, blockLockerCommand), this);
+        plugins.registerEvents(blockLockerCommand, this);
 
         // GolemListener requires Paper 26.1+
         // Check both the legacy (pre-26.1) and current package locations for compatibility
