@@ -46,10 +46,9 @@ public final class ProtectionAccessList {
                     continue;
                 }
                 Profile profile = signProfiles.get(i);
-                if (shouldSkip(profile, owner)) {
-                    continue;
+                if (!shouldSkip(profile, owner)) {
+                    addUniqueProfile(profiles, profile);
                 }
-                addUniqueProfile(profiles, profile);
             }
         }
         return profiles;
@@ -68,57 +67,80 @@ public final class ProtectionAccessList {
 
         boolean changed = false;
         Optional<Profile> owner = protection.getOwner();
-        List<Profile> seenAdditionalProfiles = new ArrayList<>();
+        List<Profile> seen = new ArrayList<>();
+        List<Profile> hiddenPool = new ArrayList<>();
 
-        List<Profile> privateOverflow = new ArrayList<>();
         Optional<ProtectionSign> privateSign = getPrivateSign(protection);
         if (privateSign.isPresent()) {
-            List<Profile> privateProfiles = new ArrayList<>(privateSign.get().getProfiles());
-            List<Profile> cleanedPrivateProfiles = new ArrayList<>();
-            for (int i = 0; i < privateProfiles.size(); i++) {
-                Profile profile = privateProfiles.get(i);
-                if (i == 0) {
-                    cleanedPrivateProfiles.add(profile);
+            List<Profile> original = privateSign.get().getProfiles();
+            List<Profile> desired = new ArrayList<>();
+            if (!original.isEmpty()) {
+                desired.add(original.get(0));
+            }
+            for (int i = 1; i < original.size(); i++) {
+                Profile profile = original.get(i);
+                if (shouldSkip(profile, owner) || containsProfile(seen, profile)) {
                     continue;
                 }
-                if (shouldSkip(profile, owner) || seenAdditionalProfiles.stream().anyMatch(seen -> isSameProfile(seen, profile))) {
-                    continue;
-                }
-                if (cleanedPrivateProfiles.size() < VISIBLE_PROFILE_LINES) {
-                    cleanedPrivateProfiles.add(profile);
-                    seenAdditionalProfiles.add(profile);
+                if (desired.size() < VISIBLE_PROFILE_LINES) {
+                    desired.add(profile);
+                    seen.add(profile);
                 } else {
-                    privateOverflow.add(profile);
+                    hiddenPool.add(profile);
                 }
             }
-            if (!sameProfiles(cleanedPrivateProfiles, privateProfiles)) {
-                plugin.getSignParser().saveSign(privateSign.get().withProfiles(cleanedPrivateProfiles));
+            if (!sameProfiles(desired, original)) {
+                plugin.getSignParser().saveSign(privateSign.get().withProfiles(desired));
                 changed = true;
             }
         }
 
-        for (ProtectionSign moreUsersSign : moreUsersSigns) {
-            List<Profile> cleanedProfiles = new ArrayList<>();
-            for (Profile profile : moreUsersSign.getProfiles()) {
-                if (shouldSkip(profile, owner) || seenAdditionalProfiles.stream().anyMatch(seen -> isSameProfile(seen, profile))) {
+        List<SignContents> moreUsersContents = new ArrayList<>();
+        for (ProtectionSign sign : moreUsersSigns) {
+            List<Profile> desired = new ArrayList<>();
+            List<Profile> original = sign.getProfiles();
+            for (int i = 0; i < original.size(); i++) {
+                Profile profile = original.get(i);
+                if (shouldSkip(profile, owner) || containsProfile(seen, profile)) {
                     continue;
                 }
-                cleanedProfiles.add(profile);
-                seenAdditionalProfiles.add(profile);
+                if (i < VISIBLE_PROFILE_LINES) {
+                    desired.add(profile);
+                    seen.add(profile);
+                } else {
+                    hiddenPool.add(profile);
+                }
             }
-            if (cleanedProfiles.isEmpty()) {
-                cleanedProfiles.add(plugin.getProfileFactory().fromNameAndUniqueId("", java.util.Optional.empty()));
+            moreUsersContents.add(new SignContents(sign, desired));
+        }
+
+        hiddenPool.removeIf(profile -> containsProfile(seen, profile));
+        for (SignContents contents : moreUsersContents) {
+            while (contents.profiles.size() < VISIBLE_PROFILE_LINES && !hiddenPool.isEmpty()) {
+                Profile profile = hiddenPool.remove(0);
+                if (!containsProfile(seen, profile)) {
+                    contents.profiles.add(profile);
+                    seen.add(profile);
+                }
             }
-            if (!sameProfiles(cleanedProfiles, moreUsersSign.getProfiles())) {
-                plugin.getSignParser().saveSign(moreUsersSign.withProfiles(cleanedProfiles));
-                changed = true;
+        }
+        for (SignContents contents : moreUsersContents) {
+            while (contents.profiles.size() < MAX_PROFILES_PER_SIGN && !hiddenPool.isEmpty()) {
+                Profile profile = hiddenPool.remove(0);
+                if (!containsProfile(seen, profile)) {
+                    contents.profiles.add(profile);
+                    seen.add(profile);
+                }
             }
         }
 
-        for (Profile overflowProfile : privateOverflow) {
-            if (seenAdditionalProfiles.stream().noneMatch(seen -> isSameProfile(seen, overflowProfile))) {
-                changed |= appendToFirstMoreUsersSign(moreUsersSigns, overflowProfile, plugin);
-                seenAdditionalProfiles.add(overflowProfile);
+        for (SignContents contents : moreUsersContents) {
+            if (contents.profiles.isEmpty()) {
+                contents.profiles.add(emptyProfile(plugin));
+            }
+            if (!sameProfiles(contents.profiles, contents.sign.getProfiles())) {
+                plugin.getSignParser().saveSign(contents.sign.withProfiles(contents.profiles));
+                changed = true;
             }
         }
 
@@ -128,36 +150,22 @@ public final class ProtectionAccessList {
         return changed;
     }
 
-    private static boolean appendToFirstMoreUsersSign(List<ProtectionSign> moreUsersSigns, Profile profile,
-            BlockLockerPluginImpl plugin) {
-        for (ProtectionSign moreUsersSign : moreUsersSigns) {
-            ProtectionSign latestSign = plugin.getSignParser().parseSign(moreUsersSign.getLocation().getBlock())
-                    .orElse(moreUsersSign);
-            List<Profile> profiles = new ArrayList<>(latestSign.getProfiles());
-            for (int i = 0; i < profiles.size(); i++) {
-                if (profiles.get(i).getDisplayName().isBlank()) {
-                    profiles.set(i, profile);
-                    plugin.getSignParser().saveSign(latestSign.withProfiles(profiles));
-                    return true;
-                }
-            }
-            if (profiles.size() < MAX_PROFILES_PER_SIGN) {
-                profiles.add(profile);
-                plugin.getSignParser().saveSign(latestSign.withProfiles(profiles));
-                return true;
-            }
-        }
-        return false;
-    }
-
     private static boolean shouldSkip(Profile profile, Optional<Profile> owner) {
         return profile.getDisplayName().isBlank() || owner.filter(value -> isSameProfile(value, profile)).isPresent();
     }
 
     private static void addUniqueProfile(List<Profile> target, Profile profile) {
-        if (target.stream().noneMatch(existing -> isSameProfile(existing, profile))) {
+        if (!containsProfile(target, profile)) {
             target.add(profile);
         }
+    }
+
+    private static boolean containsProfile(List<Profile> profiles, Profile profile) {
+        return profiles.stream().anyMatch(existing -> isSameProfile(existing, profile));
+    }
+
+    private static Profile emptyProfile(BlockLockerPluginImpl plugin) {
+        return plugin.getProfileFactory().fromNameAndUniqueId("", java.util.Optional.empty());
     }
 
     private static boolean sameProfiles(List<Profile> first, List<Profile> second) {
@@ -170,5 +178,8 @@ public final class ProtectionAccessList {
             }
         }
         return true;
+    }
+
+    private record SignContents(ProtectionSign sign, List<Profile> profiles) {
     }
 }
