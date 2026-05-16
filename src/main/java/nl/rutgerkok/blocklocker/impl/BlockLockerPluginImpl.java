@@ -201,6 +201,7 @@ public class BlockLockerPluginImpl extends JavaPlugin implements BlockLockerPlug
         // Parsers and finders
         profileFactory = new ProfileFactoryImpl(combinedGroupSystem, translator);
         chestSettings = new ChestSettingsImpl(translator, config);
+        chestSettings.getExtraProtectables().add(new UniversalProtectableBlocksSettings());
         signParser = new SignParserImpl(chestSettings, profileFactory);
         BlockFinder blockFinder = BlockFinder.create(signParser, config.getConnectContainers());
         protectionFinder = new ProtectionFinderImpl(blockFinder, chestSettings);

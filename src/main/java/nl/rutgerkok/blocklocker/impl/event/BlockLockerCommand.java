@@ -127,8 +127,8 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
             plugin.getTranslator().sendMessage(player, Translation.COMMAND_NO_PERMISSION);
             return;
         }
-        if (!plugin.getContainerSettingsManager().canStoreSettings(block)) {
-            player.sendMessage(ChatColor.RED + "이 블록에는 BlockLocker 설정을 저장할 수 없습니다.");
+        if (!plugin.getContainerSettingsManager().canStoreSettings(block, protection)) {
+            player.sendMessage(ChatColor.RED + "이 보호에는 BlockLocker 설정을 저장할 수 없습니다.");
             return;
         }
         selectedBlocks.put(player.getUniqueId(), block.getLocation());
@@ -227,13 +227,13 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
             boolean enabled = !isSettingMode(player);
             settingMode.put(player.getUniqueId(), enabled);
             player.sendMessage(enabled
-                    ? ChatColor.GOLD + "BlockLocker 설정 모드가 켜졌습니다. 보호된 컨테이너를 우클릭하면 설정 GUI가 열립니다."
+                    ? ChatColor.GOLD + "BlockLocker 설정 모드가 켜졌습니다. 보호된 블록을 우클릭하면 설정 GUI가 열립니다."
                     : ChatColor.GOLD + "BlockLocker 설정 모드가 꺼졌습니다.");
             return true;
         }
         if (args.length == 2 && args[1].equalsIgnoreCase("on")) {
             settingMode.put(player.getUniqueId(), true);
-            player.sendMessage(ChatColor.GOLD + "BlockLocker 설정 모드가 켜졌습니다. 보호된 컨테이너를 우클릭하면 설정 GUI가 열립니다.");
+            player.sendMessage(ChatColor.GOLD + "BlockLocker 설정 모드가 켜졌습니다. 보호된 블록을 우클릭하면 설정 GUI가 열립니다.");
             return true;
         }
         if (args.length == 2 && args[1].equalsIgnoreCase("off")) {
@@ -259,7 +259,7 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
     private boolean toggleSetting(Player player, ContainerSetting setting, boolean reopenGui) {
         Optional<SelectedProtection> selected = getSelectedProtection(player);
         if (selected.isEmpty()) {
-            player.sendMessage(ChatColor.RED + "선택된 보호 컨테이너가 없습니다. 먼저 /blocklocker setting을 입력한 뒤 컨테이너를 우클릭하세요.");
+            player.sendMessage(ChatColor.RED + "선택된 보호 블록이 없습니다. 먼저 /blocklocker setting을 입력한 뒤 보호된 블록을 우클릭하세요.");
             return true;
         }
         Block block = selected.get().block();
@@ -268,15 +268,15 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
             plugin.getTranslator().sendMessage(player, Translation.COMMAND_NO_PERMISSION);
             return true;
         }
-        if (!plugin.getContainerSettingsManager().canStoreSettings(block)) {
-            player.sendMessage(ChatColor.RED + "이 블록에는 BlockLocker 설정을 저장할 수 없습니다.");
+        if (!plugin.getContainerSettingsManager().canStoreSettings(block, protection)) {
+            player.sendMessage(ChatColor.RED + "이 보호에는 BlockLocker 설정을 저장할 수 없습니다.");
             return true;
         }
 
         boolean newValue = plugin.getContainerSettingsManager().toggle(block, protection, setting);
         for (Block protectedBlock : getSettingBlocks(block, protection)) {
-            if (!protectedBlock.equals(block) && plugin.getContainerSettingsManager().canStoreSettings(protectedBlock)) {
-                plugin.getContainerSettingsManager().set(protectedBlock, setting, newValue);
+            if (!protectedBlock.equals(block) && plugin.getContainerSettingsManager().canStoreSettings(protectedBlock, protection)) {
+                plugin.getContainerSettingsManager().set(protectedBlock, protection, setting, newValue);
             }
             plugin.getProtectionCache().invalidate(protectedBlock);
         }
@@ -592,7 +592,7 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
         sender.sendMessage(ChatColor.YELLOW + "/bl trust <플레이어>" + ChatColor.GRAY + " - 바라보는 보호에 플레이어를 추가합니다.");
         sender.sendMessage(ChatColor.YELLOW + "/bl untrust <플레이어>" + ChatColor.GRAY + " - 바라보는 보호에서 플레이어를 제거합니다.");
         sender.sendMessage(ChatColor.YELLOW + "/bl transfer <플레이어>" + ChatColor.GRAY + " - 바라보는 보호의 소유권을 이전합니다.");
-        sender.sendMessage(ChatColor.YELLOW + "/bl setting" + ChatColor.GRAY + " - 설정 모드를 켜거나 끕니다. 보호 컨테이너를 우클릭하면 GUI가 열립니다.");
+        sender.sendMessage(ChatColor.YELLOW + "/bl setting" + ChatColor.GRAY + " - 설정 모드를 켜거나 끕니다. 보호된 블록을 우클릭하면 GUI가 열립니다.");
         sender.sendMessage(ChatColor.YELLOW + "/bl setting toggle <hopper-input|hopper-output|public-access|golem-access>" + ChatColor.GRAY
                 + " - 선택한 보호의 세부 설정을 전환합니다.");
         if (sender.hasPermission(Permissions.CAN_MANAGE_BYPASS)) {
