@@ -75,6 +75,9 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
         if (args[0].equalsIgnoreCase("trust")) {
             return trustCommand(sender, args);
         }
+        if (args[0].equalsIgnoreCase("untrust")) {
+            return untrustCommand(sender, args);
+        }
         if (args[0].equalsIgnoreCase("transfer")) {
             return transferCommand(sender, args);
         }
@@ -84,7 +87,7 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("reload", "setting", "trust", "transfer", "bypass");
+            return Arrays.asList("reload", "setting", "trust", "untrust", "transfer", "bypass");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("setting")) {
             return Arrays.asList("on", "off", "toggle");
@@ -92,7 +95,8 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
         if (args.length == 3 && args[0].equalsIgnoreCase("setting") && args[1].equalsIgnoreCase("toggle")) {
             return Arrays.stream(ContainerSetting.values()).map(ContainerSetting::getCommandName).toList();
         }
-        if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("transfer"))) {
+        if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust")
+                || args[0].equalsIgnoreCase("transfer"))) {
             return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("bypass")) {
@@ -326,6 +330,45 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
         return true;
     }
 
+    private boolean untrustCommand(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            plugin.getTranslator().sendMessage(sender, Translation.COMMAND_CANNOT_BE_USED_BY_CONSOLE);
+            return true;
+        }
+        if (args.length != 2) {
+            player.sendMessage(ChatColor.RED + "사용법: /blocklocker untrust <플레이어>");
+            return true;
+        }
+        Optional<SelectedProtection> selected = getLookedAtProtection(player);
+        if (selected.isEmpty()) {
+            player.sendMessage(ChatColor.RED + "보호된 블록이나 표지판을 바라보고 /blocklocker untrust <플레이어>를 입력하세요.");
+            return true;
+        }
+        Protection protection = selected.get().protection();
+        if (!canEdit(player, protection)) {
+            plugin.getTranslator().sendMessage(player, Translation.COMMAND_NO_PERMISSION);
+            return true;
+        }
+
+        Profile profile = createPlayerProfile(args[1]);
+        boolean changed = false;
+        for (ProtectionSign sign : protection.getSigns()) {
+            List<Profile> profiles = removeProfile(sign, profile);
+            if (profiles.size() != sign.getProfiles().size() || !profiles.containsAll(sign.getProfiles())) {
+                plugin.getSignParser().saveSign(sign.withProfiles(profiles));
+                changed = true;
+            }
+        }
+
+        if (!changed) {
+            player.sendMessage(ChatColor.GOLD + profile.getDisplayName() + " 플레이어는 이 보호의 추가 접근 목록에 없습니다.");
+            return true;
+        }
+        plugin.getProtectionCache().invalidate(protection.getSomeProtectedBlock());
+        player.sendMessage(ChatColor.GOLD + profile.getDisplayName() + " 플레이어를 이 보호에서 제거했습니다.");
+        return true;
+    }
+
     private boolean transferCommand(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
             plugin.getTranslator().sendMessage(sender, Translation.COMMAND_CANNOT_BE_USED_BY_CONSOLE);
@@ -363,6 +406,31 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
         plugin.getProtectionCache().invalidate(protection.getSomeProtectedBlock());
         player.sendMessage(ChatColor.GOLD + "보호 소유권을 " + newOwner.getDisplayName() + " 플레이어에게 이전했습니다.");
         return true;
+    }
+
+    private List<Profile> removeProfile(ProtectionSign sign, Profile profileToRemove) {
+        List<Profile> profiles = new ArrayList<>();
+        List<Profile> existingProfiles = sign.getProfiles();
+        for (int i = 0; i < existingProfiles.size(); i++) {
+            Profile profile = existingProfiles.get(i);
+            if (sign.getType() == SignType.PRIVATE && i == 0) {
+                // The first line of the [Private] sign is the owner. Use /blocklocker transfer for that.
+                profiles.add(profile);
+                continue;
+            }
+            if (!isSamePlayer(profile, profileToRemove)) {
+                profiles.add(profile);
+            }
+        }
+        if (profiles.isEmpty()) {
+            profiles.add(plugin.getProfileFactory().fromNameAndUniqueId("", Optional.empty()));
+        }
+        return profiles;
+    }
+
+    private boolean isSamePlayer(Profile first, Profile second) {
+        return first.includes(second) || second.includes(first)
+                || first.getDisplayName().equalsIgnoreCase(second.getDisplayName());
     }
 
     private Profile createPlayerProfile(String playerName) {
