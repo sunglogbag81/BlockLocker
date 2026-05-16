@@ -40,6 +40,14 @@ public class BlockDestroyListener extends EventListener {
         super(plugin);
     }
 
+    private boolean isProtectionSign(Block block) {
+        Material material = block.getType();
+        if (!Tag.WALL_SIGNS.isTagged(material) && !Tag.STANDING_SIGNS.isTagged(material)) {
+            return false;
+        }
+        return plugin.getSignParser().parseSign(block).isPresent();
+    }
+
     private Optional<ProtectionSign> asMainSign(Block block) {
         Material material = block.getType();
         if (!Tag.WALL_SIGNS.isTagged(material) && !Tag.STANDING_SIGNS.isTagged(material)) {
@@ -75,7 +83,9 @@ public class BlockDestroyListener extends EventListener {
         Player player = event.getPlayer();
         Profile profile = plugin.getProfileFactory().fromPlayer(player);
         if (!protection.get().isOwner(profile)) {
-            if (player.hasPermission(Permissions.CAN_ADMIN)) {
+            boolean canBypassDestroySign = isProtectionSign(block)
+                    && (player.hasPermission(Permissions.CAN_BYPASS) || plugin.getBypassManager().canBypass(player));
+            if (player.hasPermission(Permissions.CAN_ADMIN) || canBypassDestroySign) {
                 String ownerName = protection.get().getOwnerDisplayName();
                 plugin.getTranslator().sendMessage(player, Translation.PROTECTION_BYPASSED, ownerName);
             } else if (isExpired(protection.get())){

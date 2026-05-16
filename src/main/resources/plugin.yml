@@ -28,5 +28,5 @@ permissions:
 commands:
   blocklocker:
     description: "BlockLocker 관리 명령어입니다."
-    usage: "/<command> reload|setting|trust|untrust|transfer|bypass"
+    usage: "/<command> reload|setting|list|trust|untrust|transfer|bypass"
     aliases: "bl"

@@ -18,6 +18,7 @@ import nl.rutgerkok.blocklocker.SignType;
 import nl.rutgerkok.blocklocker.Translator.Translation;
 import nl.rutgerkok.blocklocker.impl.BlockLockerPluginImpl;
 import nl.rutgerkok.blocklocker.impl.ContainerSettingsManager;
+import nl.rutgerkok.blocklocker.impl.ProtectionAccessList;
 import nl.rutgerkok.blocklocker.profile.PlayerProfile;
 import nl.rutgerkok.blocklocker.profile.Profile;
 import nl.rutgerkok.blocklocker.protection.ContainerProtection;
@@ -72,6 +73,9 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
         if (args[0].equalsIgnoreCase("bypass")) {
             return bypassCommand(sender, args);
         }
+        if (args[0].equalsIgnoreCase("list")) {
+            return listCommand(sender, args);
+        }
         if (args[0].equalsIgnoreCase("trust")) {
             return trustCommand(sender, args);
         }
@@ -87,7 +91,7 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("reload", "setting", "trust", "untrust", "transfer", "bypass");
+            return Arrays.asList("reload", "setting", "list", "trust", "untrust", "transfer", "bypass");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("setting")) {
             return Arrays.asList("on", "off", "toggle");
@@ -287,6 +291,36 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
         return Collections.singletonList(selectedBlock);
     }
 
+    private boolean listCommand(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            plugin.getTranslator().sendMessage(sender, Translation.COMMAND_CANNOT_BE_USED_BY_CONSOLE);
+            return true;
+        }
+        if (args.length != 1) {
+            player.sendMessage(ChatColor.RED + "사용법: /blocklocker list");
+            return true;
+        }
+        Optional<SelectedProtection> selected = getLookedAtProtection(player);
+        if (selected.isEmpty()) {
+            player.sendMessage(ChatColor.RED + "보호된 블록이나 표지판을 바라보고 /blocklocker list를 입력하세요.");
+            return true;
+        }
+        Protection protection = selected.get().protection();
+        player.sendMessage(ChatColor.GOLD + "BlockLocker 접근 목록");
+        player.sendMessage(ChatColor.YELLOW + "소유자: " + ChatColor.WHITE + protection.getOwnerDisplayName());
+        List<String> accessNames = ProtectionAccessList.getAccessProfiles(protection).stream()
+                .map(Profile::getDisplayName)
+                .filter(name -> !name.isBlank())
+                .distinct()
+                .toList();
+        if (accessNames.isEmpty()) {
+            player.sendMessage(ChatColor.YELLOW + "추가 접근자: " + ChatColor.GRAY + "없음");
+        } else {
+            player.sendMessage(ChatColor.YELLOW + "추가 접근자: " + ChatColor.WHITE + String.join(", ", accessNames));
+        }
+        return true;
+    }
+
     private boolean trustCommand(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
             plugin.getTranslator().sendMessage(sender, Translation.COMMAND_CANNOT_BE_USED_BY_CONSOLE);
@@ -317,16 +351,21 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
             return true;
         }
 
-        Optional<ProtectionSign> signWithSpace = findSignWithSpace(protection);
+        Optional<ProtectionSign> signWithSpace = findSignForTrust(protection);
         if (signWithSpace.isEmpty()) {
-            player.sendMessage(ChatColor.RED + "남은 표지판 줄이 없습니다. 보호 블록에 [추가 사용자] / [More Users] 표지판을 하나 더 설치한 뒤 다시 시도하세요.");
+            player.sendMessage(ChatColor.RED + "남은 표지판 저장 공간이 없습니다. 보호 블록에 [추가 사용자] / [More Users] 표지판을 하나 더 설치한 뒤 다시 시도하세요.");
             return true;
         }
         ProtectionSign sign = signWithSpace.get();
+        boolean hiddenLine = sign.getProfiles().size() >= ProtectionAccessList.VISIBLE_PROFILE_LINES;
         List<Profile> profiles = addProfileToFirstFreeLine(sign.getProfiles(), profile);
         plugin.getSignParser().saveSign(sign.withProfiles(profiles));
         plugin.getProtectionCache().invalidate(protection.getSomeProtectedBlock());
+        normalizeFresh(protection);
         player.sendMessage(ChatColor.GOLD + profile.getDisplayName() + " 플레이어를 이 보호에 추가했습니다.");
+        if (hiddenLine) {
+            player.sendMessage(ChatColor.YELLOW + "표지판 앞면의 표시 줄이 가득 차서 이름이 바로 보이지 않을 수 있습니다. [추가 사용자] / [More Users] 표지판을 추가하는 것을 권장합니다.");
+        }
         return true;
     }
 
@@ -365,6 +404,7 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
             return true;
         }
         plugin.getProtectionCache().invalidate(protection.getSomeProtectedBlock());
+        normalizeFresh(protection);
         player.sendMessage(ChatColor.GOLD + profile.getDisplayName() + " 플레이어를 이 보호에서 제거했습니다.");
         return true;
     }
@@ -408,6 +448,11 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
         return true;
     }
 
+    private void normalizeFresh(Protection protection) {
+        plugin.getProtectionFinder().findProtection(protection.getSomeProtectedBlock())
+                .ifPresent(freshProtection -> ProtectionAccessList.normalize(freshProtection, plugin));
+    }
+
     private List<Profile> removeProfile(ProtectionSign sign, Profile profileToRemove) {
         List<Profile> profiles = new ArrayList<>();
         List<Profile> existingProfiles = sign.getProfiles();
@@ -429,8 +474,7 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
     }
 
     private boolean isSamePlayer(Profile first, Profile second) {
-        return first.includes(second) || second.includes(first)
-                || first.getDisplayName().equalsIgnoreCase(second.getDisplayName());
+        return ProtectionAccessList.isSameProfile(first, second);
     }
 
     private Profile createPlayerProfile(String playerName) {
@@ -441,21 +485,35 @@ public final class BlockLockerCommand implements TabExecutor, Listener {
         return plugin.getProfileFactory().fromNameAndUniqueId(playerName, Optional.empty());
     }
 
-    private Optional<ProtectionSign> findSignWithSpace(Protection protection) {
-        Optional<ProtectionSign> moreUsersSign = protection.getSigns().stream()
-                .filter(sign -> sign.getType() == SignType.MORE_USERS)
+    private Optional<ProtectionSign> findSignForTrust(Protection protection) {
+        List<ProtectionSign> moreUsersSigns = ProtectionAccessList.getMoreUsersSigns(protection);
+        Optional<ProtectionSign> visibleMoreUsersSign = moreUsersSigns.stream()
+                .filter(this::hasVisibleProfileLine)
+                .findFirst();
+        if (visibleMoreUsersSign.isPresent()) {
+            return visibleMoreUsersSign;
+        }
+        Optional<ProtectionSign> hiddenMoreUsersSign = moreUsersSigns.stream()
                 .filter(this::hasFreeProfileLine)
                 .findFirst();
-        if (moreUsersSign.isPresent()) {
-            return moreUsersSign;
+        if (hiddenMoreUsersSign.isPresent()) {
+            return hiddenMoreUsersSign;
         }
         return protection.getSigns().stream()
+                .filter(sign -> sign.getType() == SignType.PRIVATE)
                 .filter(this::hasFreeProfileLine)
                 .findFirst();
     }
 
+    private boolean hasVisibleProfileLine(ProtectionSign sign) {
+        return sign.getProfiles().size() < ProtectionAccessList.VISIBLE_PROFILE_LINES
+                || sign.getProfiles().stream().limit(ProtectionAccessList.VISIBLE_PROFILE_LINES)
+                .anyMatch(profile -> profile.getDisplayName().isBlank());
+    }
+
     private boolean hasFreeProfileLine(ProtectionSign sign) {
-        return sign.getProfiles().size() < 6 || sign.getProfiles().stream().anyMatch(profile -> profile.getDisplayName().isBlank());
+        return sign.getProfiles().size() < ProtectionAccessList.MAX_PROFILES_PER_SIGN
+                || sign.getProfiles().stream().anyMatch(profile -> profile.getDisplayName().isBlank());
     }
 
     private List<Profile> addProfileToFirstFreeLine(List<Profile> existingProfiles, Profile profile) {

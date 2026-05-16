@@ -23,7 +23,7 @@ BlockLocker
   * 큰 상자 지원: 한쪽을 보호하면 다른 한쪽도 보호됩니다.
   * 큰 상자의 컨테이너 설정은 두 블록 모두에 함께 저장됩니다.
   * 트랩도어/울타리 문도 본체 또는 지지 블록에 표지판을 붙일 수 있습니다.
-* 보호 소유자는 `/blocklocker trust <플레이어>` / `/blocklocker untrust <플레이어>`로 접근 플레이어를 관리하고 `/blocklocker transfer <플레이어>`로 소유권을 이전할 수 있습니다.
+* 보호 소유자는 `/blocklocker list`로 접근 목록을 확인하고 `/blocklocker trust <플레이어>` / `/blocklocker untrust <플레이어>`로 접근 플레이어를 관리하며 `/blocklocker transfer <플레이어>`로 소유권을 이전할 수 있습니다.
 * `/blocklocker setting`으로 보호 컨테이너의 호퍼/공용/골렘 접근 설정 GUI를 열 수 있습니다.
 * 업데이트 알림을 지원합니다.
 
@@ -47,6 +47,7 @@ mvn clean package
 /blocklocker setting on
 /blocklocker setting off
 /blocklocker setting toggle <hopper-input|hopper-output|public-access|golem-access>
+/blocklocker list
 /blocklocker trust <플레이어>
 /blocklocker untrust <플레이어>
 /blocklocker transfer <플레이어>

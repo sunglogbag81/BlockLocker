@@ -18,6 +18,7 @@ import nl.rutgerkok.blocklocker.SignType;
 import nl.rutgerkok.blocklocker.Translator.Translation;
 import nl.rutgerkok.blocklocker.event.PlayerProtectionCreateEvent;
 import nl.rutgerkok.blocklocker.impl.BlockLockerPluginImpl;
+import nl.rutgerkok.blocklocker.impl.ProtectionAccessList;
 import nl.rutgerkok.blocklocker.location.IllegalLocationException;
 import nl.rutgerkok.blocklocker.profile.Profile;
 import nl.rutgerkok.blocklocker.protection.Protection;
@@ -194,6 +195,7 @@ public class SignChangeListener extends EventListener {
                 Optional<Protection> protection = plugin.getProtectionFinder().findProtection(block);
                 if (protection.isPresent()) {
                     plugin.getProtectionUpdater().update(protection.get(), true);
+                    ProtectionAccessList.normalize(protection.get(), plugin);
                 }
             }
         });
