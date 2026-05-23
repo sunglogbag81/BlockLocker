@@ -3,6 +3,7 @@ package nl.rutgerkok.blocklocker.impl.event;
 import nl.rutgerkok.blocklocker.AttackType;
 import nl.rutgerkok.blocklocker.Permissions;
 import nl.rutgerkok.blocklocker.ProtectionSign;
+import nl.rutgerkok.blocklocker.SearchMode;
 import nl.rutgerkok.blocklocker.Translator.Translation;
 import nl.rutgerkok.blocklocker.impl.BlockLockerPluginImpl;
 import nl.rutgerkok.blocklocker.profile.Profile;
@@ -73,9 +74,14 @@ public class BlockDestroyListener extends EventListener {
         }
 
         Player player = event.getPlayer();
+        boolean canBypassDestroy = player.hasPermission(Permissions.CAN_BYPASS) || plugin.getBypassManager().canBypass(player);
+        if (isSupportingBlockOnly(block) && !player.hasPermission(Permissions.CAN_ADMIN) && !canBypassDestroy) {
+            event.setCancelled(true);
+            return;
+        }
+
         Profile profile = plugin.getProfileFactory().fromPlayer(player);
         if (!protection.get().isOwner(profile)) {
-            boolean canBypassDestroy = player.hasPermission(Permissions.CAN_BYPASS) || plugin.getBypassManager().canBypass(player);
             if (player.hasPermission(Permissions.CAN_ADMIN) || canBypassDestroy) {
                 String ownerName = protection.get().getOwnerDisplayName();
                 plugin.getTranslator().sendMessage(player, Translation.PROTECTION_BYPASSED, ownerName);
@@ -91,6 +97,11 @@ public class BlockDestroyListener extends EventListener {
         if (mainSign.isPresent()) {
             destroyOtherSigns(mainSign.get(), protection.get());
         }
+    }
+
+    private boolean isSupportingBlockOnly(Block block) {
+        return plugin.getProtectionFinder().findProtection(block, SearchMode.ALL).isPresent()
+                && plugin.getProtectionFinder().findProtection(block, SearchMode.NO_SUPPORTING_BLOCKS).isEmpty();
     }
 
     @EventHandler(ignoreCancelled = true)

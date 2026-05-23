@@ -25,6 +25,7 @@ import org.bukkit.block.sign.SignSide;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockDispenseEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.entity.EntityInteractEvent;
@@ -333,6 +334,13 @@ public final class InteractListener extends EventListener {
         }
     }
 
+    @EventHandler(ignoreCancelled = true)
+    public void onBlockDispense(BlockDispenseEvent event) {
+        if (isRedstoneDenied(event.getBlock())) {
+            event.setCancelled(true);
+        }
+    }
+
     /**
      * Prevents players from taking the book on a protected lectern.
      * 
@@ -590,9 +598,33 @@ public final class InteractListener extends EventListener {
         }
         sign.update();
 
+        closeUnauthorizedViewers(player, block);
+
         // Remove the sign from the player's hand
         removeSingleSignFromHand(player);
         return true;
+    }
+
+    private void closeUnauthorizedViewers(Player lockingPlayer, Block protectedBlock) {
+        Optional<Protection> protection = plugin.getProtectionFinder().findProtection(protectedBlock, SearchMode.NO_SUPPORTING_BLOCKS);
+        if (protection.isEmpty()) {
+            return;
+        }
+
+        for (Player viewer : Bukkit.getOnlinePlayers()) {
+            if (viewer.equals(lockingPlayer)) {
+                continue;
+            }
+            Inventory openInventory = viewer.getOpenInventory().getTopInventory();
+            Block openBlock = getInventoryBlockOrNull(openInventory);
+            if (openBlock == null) {
+                continue;
+            }
+            Optional<Protection> openProtection = plugin.getProtectionFinder().findProtection(openBlock, SearchMode.NO_SUPPORTING_BLOCKS);
+            if (openProtection.isPresent() && openProtection.get().equals(protection.get())) {
+                viewer.closeInventory();
+            }
+        }
     }
 
 }
