@@ -153,6 +153,10 @@ public class BlockDestroyListener extends EventListener {
     public void onEntityChangeBlock(EntityChangeBlockEvent event) {
         AttackType attackType = AttackType.UNKNOWN;
         if (event instanceof EntityBreakDoorEvent) {
+            if (isProtected(event.getBlock())) {
+                event.setCancelled(true);
+                return;
+            }
             attackType = AttackType.ZOMBIE;
         } else if (event.getEntity() instanceof Enderman) {
             attackType = AttackType.ENDERMAN;

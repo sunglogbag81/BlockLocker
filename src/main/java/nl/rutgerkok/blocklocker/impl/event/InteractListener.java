@@ -280,10 +280,8 @@ public final class InteractListener extends EventListener {
         // Prevents villagers and golems from opening doors
         Entity entity = event.getEntity();
         if (entity instanceof Villager) {
-            if (plugin.getChestSettings().allowDestroyBy(AttackType.VILLAGER)) {
-                return;
-            }
-            if (isProtected(event.getBlock())) {
+            Optional<Protection> protection = plugin.getProtectionFinder().findProtection(event.getBlock(), SearchMode.MAIN_BLOCKS_ONLY);
+            if (protection.isPresent() && protection.get().canBeOpened()) {
                 event.setCancelled(true);
             }
         } else if (entity instanceof Golem) {
@@ -399,6 +397,7 @@ public final class InteractListener extends EventListener {
 
         if (command.isSettingMode(player)) {
             if (usedOffHand) {
+                event.setCancelled(true);
                 return;
             }
             event.setCancelled(true);
@@ -419,6 +418,11 @@ public final class InteractListener extends EventListener {
 
         // Check if protection needs update
         plugin.getProtectionUpdater().update(protection.get(), false);
+
+        if (usedOffHand) {
+            event.setCancelled(true);
+            return;
+        }
 
         // Check if player is allowed, open door
         boolean publiclyAllowed = !clickedSign
