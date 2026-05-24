@@ -1,6 +1,7 @@
 package nl.rutgerkok.blocklocker.impl.updater;
 
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
@@ -130,6 +131,10 @@ public final class Updater {
             } else {
                 notifyServer(new UpdateResult(Status.NO_UPDATE, result));
             }
+        } catch (UnknownHostException e) {
+            plugin.getLogger().log(Level.INFO, "Skipping update check: update server cannot be resolved ("
+                    + e.getMessage() + "). Set updater: DISABLED in config.yml to skip checks entirely.");
+            notifyServer(UpdateResult.failed());
         } catch (IOException e) {
             plugin.getLogger().log(Level.WARNING, "Error during update check"
                     + " (you can disable automatic updates in the config file)", e);

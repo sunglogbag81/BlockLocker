@@ -31,7 +31,10 @@ languageFile: translations-kr.yml
 # The updater. Possible values:
 # JUST_NOTIFY - check for updates, notify the server admins
 # DISABLED - don't check for updates
-updater: JUST_NOTIFY
+#
+# Disabled by default for this fork: servers without public DNS access should not
+# spam warnings when rutgerkok.nl cannot be resolved.
+updater: DISABLED
 
 # All types of containers that can be protected.
 # All material names can be found here:
