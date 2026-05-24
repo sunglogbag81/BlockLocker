@@ -11,6 +11,7 @@ import nl.rutgerkok.blocklocker.protection.Protection;
 import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Creeper;
 import org.bukkit.entity.Enderman;
@@ -134,7 +135,7 @@ public class BlockDestroyListener extends EventListener {
         if (plugin.getChestSettings().allowDestroyBy(AttackType.PISTON)) {
             return;
         }
-        if (anyProtected(event.getBlocks())) {
+        if (pistonWouldAffectProtection(event.getBlocks(), event.getDirection())) {
             event.setCancelled(true);
         }
     }
@@ -144,9 +145,33 @@ public class BlockDestroyListener extends EventListener {
         if (plugin.getChestSettings().allowDestroyBy(AttackType.PISTON)) {
             return;
         }
-        if (event.isSticky() && anyProtected(event.getBlocks())) {
+        if (event.isSticky() && pistonWouldAffectProtection(event.getBlocks(), event.getDirection())) {
             event.setCancelled(true);
         }
+    }
+
+    private boolean pistonWouldAffectProtection(List<Block> movedBlocks, BlockFace direction) {
+        for (Block block : movedBlocks) {
+            if (isProtected(block)) {
+                return true;
+            }
+            Block destination = block.getRelative(direction);
+            if (isProtected(destination) || hasProtectedAdjacentSign(block) || hasProtectedAdjacentSign(destination)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasProtectedAdjacentSign(Block block) {
+        for (BlockFace face : List.of(BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.UP, BlockFace.DOWN)) {
+            Block adjacent = block.getRelative(face);
+            if ((Tag.WALL_SIGNS.isTagged(adjacent.getType()) || Tag.STANDING_SIGNS.isTagged(adjacent.getType()))
+                    && isProtected(adjacent)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @EventHandler(ignoreCancelled = true)

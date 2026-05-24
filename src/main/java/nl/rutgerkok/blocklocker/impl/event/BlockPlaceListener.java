@@ -57,7 +57,7 @@ public final class BlockPlaceListener extends EventListener {
      * @param event
      *            The block place event.
      */
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGH)
     public void onBlockPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
         

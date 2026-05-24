@@ -95,7 +95,11 @@ public class SignChangeListener extends EventListener {
             } else {
                 // Second main sign is not allowed
                 plugin.getTranslator().sendMessage(player, Translation.PROTECTION_ADD_MORE_USERS_SIGN_INSTEAD);
-                block.breakNaturally(); // Not ideal if other side is the main sign
+                if (isOtherSideMainSign(block, event.getSide())) {
+                    event.setCancelled(true);
+                    return;
+                }
+                block.breakNaturally();
                 event.setCancelled(true);
                 return;
             }
@@ -105,6 +109,11 @@ public class SignChangeListener extends EventListener {
         // Note that we can't use the Protection instance for this, it will
         // still use the outdated signs the next tick
         updateBlockForUniqueIdsSoon(block);
+    }
+
+    private boolean isOtherSideMainSign(Block block, Side editedSide) {
+        Side otherSide = editedSide == Side.FRONT ? Side.BACK : Side.FRONT;
+        return getExistingSignType(block, otherSide).filter(SignType::isMainSign).isPresent();
     }
 
     private void handleSignNotNearbyProtection(SignChangeEvent event) {

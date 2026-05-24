@@ -222,17 +222,15 @@ public final class InteractListener extends EventListener {
             boolean usedOffHand) {
         Block clickedBlock = event.getClickedBlock();
         Player player = event.getPlayer();
-        Material heldBlock = player.getInventory().getItemInMainHand().getType();
 
         // Handle lectern logic, especially if there is no book inserted.
         if (clickedBlock.getType() == Material.LECTERN) {
-            if ((heldBlock != Material.WRITABLE_BOOK) && (heldBlock != Material.WRITTEN_BOOK)) {
-                return;
-            } else {
-                if (isLecternOccupied((Lectern) clickedBlock.getState())) {
-                    return;
-                }
+            event.setCancelled(true);
+            if (!usedOffHand) {
+                plugin.getTranslator()
+                        .sendMessage(player, Translation.PROTECTION_NO_ACCESS, protection.getOwnerDisplayName());
             }
+            return;
         }
 
         event.setCancelled(true);
